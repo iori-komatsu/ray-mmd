@@ -1,4 +1,5 @@
 #define SHADOW_BLUR_COUNT 6
+#define SHADOW_POISSON_COUNT 25
 
 static float4x4 matLightProject = CreateOrthoProject(2, 2, mPSSMDepthZMin, mPSSMDepthZMax);
 static float4x4 matLightView = CreateLightViewMatrix(SunDirection, -SunDirection, mLightDistance);
@@ -7,7 +8,7 @@ static float4x4 matLightViewFromCameraView = mul(matViewInverse, matLightView);
 static float4x4 matLightProjectFromCameraView = mul(matViewInverse, matLightViewProject);
 static float4x4 lightCropParams = CreateLightCropParams(matLightViewFromCameraView, SHADOW_MAP_SIZE);
 
-static const float2 Poisson25[25] =
+static const float2 Poisson[SHADOW_POISSON_COUNT] =
 {
 	float2(-0.978698, -0.0884121),
 	float2(-0.841121, 0.521165),
@@ -41,24 +42,26 @@ float ShadowPCF(sampler source, float2 coord, float2 radius, float receiverDepth
 	float shadow = 0.0;
 
 	[unroll]
-	for (int i = 0; i < 25; i++) 
+	for (int i = 0; i < SHADOW_POISSON_COUNT; i++) 
 	{
-		float2 pos = coord + Poisson25[i] * radius;
+		float2 pos = coord + Poisson[i] * radius;
 		shadow += saturate(exp(-20 * (receiverDepth - tex2Dlod(source, float4(pos, 0, 0)).r)));
 	}
 
-	return shadow / 25.0f;
+	return shadow / SHADOW_POISSON_COUNT;
 }
 
 #if SUN_SHADOW_MODE == 1
-float ShadowPCSS(sampler source, float2 coord, float2 radius, float receiverDepth)
+float ShadowPCSS(sampler source, float2 coord, float lightRadius, float receiverDepth)
 {
 	float depthAccum = 0;
 	float depthAccumNums = 0;
 
-	for (int i = 0; i < 25; ++i)
+	float sampleRadius = lightRadius / SHADOW_MAP_SIZE * 2.0;
+
+	for (int i = 0; i < SHADOW_POISSON_COUNT; ++i)
 	{
-		float2 pos = coord + Poisson25[i] * radius * 5.0;
+		float2 pos = coord + Poisson[i] * sampleRadius;
 
 		if (pos.x == saturate(pos.x) && pos.y == saturate(pos.y))
 		{
@@ -78,8 +81,8 @@ float ShadowPCSS(sampler source, float2 coord, float2 radius, float receiverDept
     float avgDepth = depthAccum / depthAccumNums;
     float avgDepthWorld = avgDepth;
 
-    float2 weight = (receiverDepth - avgDepthWorld) / avgDepthWorld;
-    float2 filterRadius = 0.2 * weight;
+    float2 width = (receiverDepth - avgDepthWorld) / avgDepthWorld * lightRadius * 2.0;
+    float2 filterRadius = width / receiverDepth * SHADOW_POISSON_COUNT;
 
     return ShadowPCF(source, coord, filterRadius, receiverDepth);
 }
@@ -123,18 +126,18 @@ float ShadingShadow(MaterialParam material, float3 viewPosition)
 		clip(tex2Dlod(PSSM4Samp, float4(coord.xy, 0, 0)).r - 1e-5);
 
 	float shadow = 0;
-	float radius = 2.0 / SHADOW_MAP_SIZE;
+	float radius = 2;
 
 #if SUN_SHADOW_MODE == 0
 	[branch]
 	if (coord.w == 0)
-		shadow = ShadowPCF(PSSM1Samp, coord.xy, radius, receiverDepth);
+		shadow = ShadowPCF(PSSM1Samp, coord.xy, radius / SHADOW_MAP_SIZE, receiverDepth);
 	else if (coord.w == 1)
-		shadow = ShadowPCF(PSSM2Samp, coord.xy, radius, receiverDepth);
+		shadow = ShadowPCF(PSSM2Samp, coord.xy, radius / SHADOW_MAP_SIZE, receiverDepth);
 	else if (coord.w == 2)
-		shadow = ShadowPCF(PSSM3Samp, coord.xy, radius, receiverDepth);
+		shadow = ShadowPCF(PSSM3Samp, coord.xy, radius / SHADOW_MAP_SIZE, receiverDepth);
 	else
-		shadow = ShadowPCF(PSSM4Samp, coord.xy, radius, receiverDepth);
+		shadow = ShadowPCF(PSSM4Samp, coord.xy, radius / SHADOW_MAP_SIZE, receiverDepth);
 
 #elif SUN_SHADOW_MODE == 1
 	[branch]
