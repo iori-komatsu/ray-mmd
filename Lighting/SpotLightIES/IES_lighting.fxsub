@@ -91,41 +91,35 @@ static float4x4 matLightViewProject = mul(matLightView, matLightProject);
 static float4x4 matLightViewFromCameraView = mul(matViewInverse, matLightView);
 static float4x4 matLightProjectFromCameraView = mul(matViewInverse, matLightViewProject);
 
-#define SHADOW_POISSON_COUNT 32
+#define SHADOW_POISSON_COUNT 25
 
-static const float2 Poisson[SHADOW_POISSON_COUNT] = {
-	float2(0.06407013, 0.05409927),
-	float2(0.7366577, 0.5789394),
-	float2(-0.6270542, -0.5320278),
-	float2(-0.4096107, 0.8411095),
-	float2(0.6849564, -0.4990818),
-	float2(-0.874181, -0.04579735),
-	float2(0.9989998, 0.0009880066),
-	float2(-0.004920578, -0.9151649),
-	float2(0.1805763, 0.9747483),
-	float2(-0.2138451, 0.2635818),
-	float2(0.109845, 0.3884785),
-	float2(0.06876755, -0.3581074),
-	float2(0.374073, -0.7661266),
-	float2(0.3079132, -0.1216763),
-	float2(-0.3794335, -0.8271583),
-	float2(-0.203878, -0.07715034),
-	float2(0.5912697, 0.1469799),
-	float2(-0.88069, 0.3031784),
-	float2(0.5040108, 0.8283722),
-	float2(-0.5844124, 0.5494877),
-	float2(0.6017799, -0.1726654),
-	float2(-0.5554981, 0.1559997),
-	float2(-0.3016369, -0.3900928),
-	float2(-0.5550632, -0.1723762),
-	float2(0.925029, 0.2995041),
-	float2(-0.2473137, 0.5538505),
-	float2(0.9183037, -0.2862392),
-	float2(0.2469421, 0.6718712),
-	float2(0.3916397, -0.4328209),
-	float2(-0.03576927, -0.6220032),
-	float2(-0.04661255, 0.7995201),
-	float2(0.4402924, 0.3640312),
+static const float2 Poisson[SHADOW_POISSON_COUNT] =
+{
+	float2(-0.978698, -0.0884121),
+	float2(-0.841121, 0.521165),
+	float2(-0.71746, -0.50322),
+	float2(-0.702933, 0.903134),
+	float2(-0.663198, 0.15482),
+	float2(-0.495102, -0.232887),
+	float2(-0.364238, -0.961791),
+	float2(-0.345866, -0.564379),
+	float2(-0.325663, 0.64037),
+	float2(-0.182714, 0.321329),
+	float2(-0.142613, -0.0227363),
+	float2(-0.0564287, -0.36729),
+	float2(-0.0185858, 0.918882),
+	float2(0.0381787, -0.728996),
+	float2(0.16599, 0.093112),
+	float2(0.253639, 0.719535),
+	float2(0.369549, -0.655019),
+	float2(0.423627, 0.429975),
+	float2(0.530747, -0.364971),
+	float2(0.566027, -0.940489),
+	float2(0.639332, 0.0284127),
+	float2(0.652089, 0.669668),
+	float2(0.773797, 0.345012),
+	float2(0.968871, 0.840449),
+	float2(0.991882, -0.657338)
 };
 
 float2 Rotate(float2 pos, float2 rotation)
