@@ -135,19 +135,6 @@ float2 Rotate(float2 pos, float2 rotation)
 
 float ShadowPCF(sampler source, float2 coord, float2 radius, float2 rotation, float receiverDepth)
 {
-#if 0
-	float shadow = 0.0;
-
-	for (int i = 0; i < SHADOW_POISSON_COUNT; i++) 
-	{
-		float2 offset = Rotate(Poisson[i] * radius, rotation);
-		float2 pos = coord + offset;
-		float z = (receiverDepth + dot(coord, offset));
-		shadow += z < tex2Dlod(source, float4(pos, 0, 0)).r ? 1 : 0;
-	}
-
-	return shadow / SHADOW_POISSON_COUNT;
-#else
 	float2 shadow = 0.0;
 
 	for (int x = -sampleRadius; x <= sampleRadius; x++) 
@@ -160,7 +147,6 @@ float ShadowPCF(sampler source, float2 coord, float2 radius, float2 rotation, fl
 	}
 
 	return ChebyshevUpperBound(shadow, receiverDepth, 1e-5, LightHardness);
-#endif
 }
 
 float ShadowPCSS(sampler source, float2 coord, float lightRadius, float2 rotation, float receiverDepth)
