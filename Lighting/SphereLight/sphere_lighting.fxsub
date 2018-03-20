@@ -111,8 +111,95 @@ sampler ShadowMapSamp = sampler_state {
 	AddressU = CLAMP; AddressV = CLAMP;
 };
 
-static const float2 ShadowmapOffset  = 0.5 / float2(SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
-static const float2 ShadowmapOffset2 = 1.0 / float2(SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
+static const float2 ShadowMapOffset  = 0.5 / float2(SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
+static const float2 ShadowMapOffset2 = 1.0 / float2(SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
+
+#define SHADOW_POISSON_COUNT 25
+
+static const float2 Poisson[SHADOW_POISSON_COUNT] =
+{
+	float2(-0.978698, -0.0884121),
+	float2(-0.841121, 0.521165),
+	float2(-0.71746, -0.50322),
+	float2(-0.702933, 0.903134),
+	float2(-0.663198, 0.15482),
+	float2(-0.495102, -0.232887),
+	float2(-0.364238, -0.961791),
+	float2(-0.345866, -0.564379),
+	float2(-0.325663, 0.64037),
+	float2(-0.182714, 0.321329),
+	float2(-0.142613, -0.0227363),
+	float2(-0.0564287, -0.36729),
+	float2(-0.0185858, 0.918882),
+	float2(0.0381787, -0.728996),
+	float2(0.16599, 0.093112),
+	float2(0.253639, 0.719535),
+	float2(0.369549, -0.655019),
+	float2(0.423627, 0.429975),
+	float2(0.530747, -0.364971),
+	float2(0.566027, -0.940489),
+	float2(0.639332, 0.0284127),
+	float2(0.652089, 0.669668),
+	float2(0.773797, 0.345012),
+	float2(0.968871, 0.840449),
+	float2(0.991882, -0.657338)
+};
+
+float2 Rotate(float2 pos, float2 rotation)
+{
+	return float2(pos.x * rotation.x - pos.y * rotation.y, pos.y * rotation.x + pos.x * rotation.y);
+}
+
+float ShadowPCF(sampler source, float2 coord, float2 radius, float2 rotation, float receiverDepth)
+{
+	float2 shadow = 0.0;
+
+	for (int x = -sampleRadius; x <= sampleRadius; x++) 
+	{
+		for (int y = -sampleRadius; y <= sampleRadius; y++)
+		{
+#if SHADOW_MAP_TYPE == 1
+			float2 pos = coord + Rotate(float2(x, y) * radius, rotation);
+#else
+			float2 pos = coord + float2(x, y) * radius;
+#endif
+			shadow += tex2Dlod(source, float4(pos, 0.0, 0.0)).rg * sampleKernel[sampleRadius + x] * sampleKernel[sampleRadius + y];
+		}
+	}
+
+	return ChebyshevUpperBound(shadow, receiverDepth, 1e-5, LightHardness);
+}
+
+float ShadowPCSS(sampler source, float2 coord, float lightRadius, float2 rotation, float receiverDepth)
+{
+	float depthAccum = 0.0;
+	float depthAccumNums = 0.0;
+
+	float sampleRadius = lightRadius * (receiverDepth - 1.0) / receiverDepth;
+
+	for (int i = 0; i < SHADOW_POISSON_COUNT; ++i)
+	{
+		float2 offset = Rotate(Poisson[i] * sampleRadius, rotation);
+
+		float shadowMapDepth = tex2Dlod(source, float4(coord + offset, 0.0, 0.0)).r;
+
+		if (shadowMapDepth < (receiverDepth + dot(coord, offset)))
+		{
+			depthAccum += shadowMapDepth;
+			depthAccumNums += 1.0;
+		}
+	}
+
+	if (depthAccumNums == 0)
+		return 1.0;
+
+	float avgDepth = depthAccum / depthAccumNums;
+
+	float weight = (receiverDepth - avgDepth) * mPointLightFar * sampleRadius;
+	float filterRadius = 1.0 / (SHADOW_MAP_HEIGHT * weight);
+
+	return ShadowPCF(source, coord, filterRadius, rotation, receiverDepth);
+}
 
 float ShadingShadow(MaterialParam material, float3 viewPosition)
 {
@@ -125,18 +212,14 @@ float ShadingShadow(MaterialParam material, float3 viewPosition)
 	float2 shadow = 0.0;
 	float2 coord = CalcDualShadowCoord(L / linearDepth, SHADOW_MAP_HEIGHT);
 
-	[unroll]
-	for (int x = -sampleRadius; x <= sampleRadius; x++) 
-	{
-		[unroll]
-		for (int y = -sampleRadius; y <= sampleRadius; y++)
-		{
-			float2 pos = coord + float2(x, y) * ShadowmapOffset2;
-			shadow += tex2Dlod(ShadowMapSamp, float4(pos, 0, 0)).rg * sampleKernel[sampleRadius+x] * sampleKernel[sampleRadius+y];
-		}
-	}
+	float rotationAngle = PseudoRandom(coord * ViewportSize) * PI;
+	float2 rotationTrig = float2(cos(rotationAngle), sin(rotationAngle));
 
-	return ChebyshevUpperBound(shadow, depth, 1e-4, LightHardness);
+#if SHADOW_MAP_TYPE == 1
+	return ShadowPCSS(ShadowMapSamp, coord, 2.0 / LightRadius, rotationTrig, depth);
+#else
+	return ShadowPCF(ShadowMapSamp, coord, ShadowMapOffset2, rotationTrig, depth);
+#endif
 }
 #endif
 
