@@ -64,6 +64,7 @@ float4 CascadeShadowMapPS(
 technique DepthTech<string MMDPass = "object_ss";
 >{
 	pass CascadeShadowMap {
+		CullMode = CW; // Peter Panning
 		AlphaBlendEnable = false; AlphaTestEnable = false;
 		VertexShader = compile vs_3_0 CascadeShadowMapVS();
 		PixelShader  = compile ps_3_0 CascadeShadowMapPS();

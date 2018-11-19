@@ -52,11 +52,13 @@ float4 ShadowMapGenPS(
 technique DepthTecSS<string MMDPass = "object_ss";
 >{
     pass DrawObjectF {
+        CullMode = CW; // Peter Panning
         AlphaBlendEnable = false; AlphaTestEnable = false;
         VertexShader = compile vs_3_0 ShadowMapGenVS(1);
         PixelShader  = compile ps_3_0 ShadowMapGenPS(1);
     }
     pass DrawObjectB {
+        CullMode = CW; // Peter Panning
         AlphaBlendEnable = false; AlphaTestEnable = false;
         VertexShader = compile vs_3_0 ShadowMapGenVS(-1);
         PixelShader  = compile ps_3_0 ShadowMapGenPS(-1);
