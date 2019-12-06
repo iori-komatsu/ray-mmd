@@ -1,0 +1,63 @@
+// 分解エフェクト
+float Fracture_Time : TIME <bool SyncInEditMode=true;>;
+
+float4x4 Fracture_OriginMatrix : CONTROLOBJECT < string name = "(self)"; string item = "モデル親"; >;
+float3 Fracture_BreakCenter    : CONTROLOBJECT < string name = "(self)"; string item = "崩壊中心"; >;
+float3 Fracture_BreakSpeed     : CONTROLOBJECT < string name = "(self)"; string item = "崩壊速度"; >;
+
+//float3 Fracture_SpreadSpeed    : CONTROLOBJECT < string name = "(self)"; string item = "拡散速度"; >;
+float3 Fracture_ImpactSpeed    : CONTROLOBJECT < string name = "(self)"; string item = "衝撃速度"; >;
+float3 Fracture_RotateSpeed    : CONTROLOBJECT < string name = "(self)"; string item = "回転速度"; >;
+float3 Fracture_RotateInitial  : CONTROLOBJECT < string name = "(self)"; string item = "初期回転量"; >;
+
+float3 Fracture_GravityVector  : CONTROLOBJECT < string name = "(self)"; string item = "重力ﾍﾞｸﾄﾙ"; >;
+float3 Fracture_BreakStartFrame: CONTROLOBJECT < string name = "(self)"; string item = "崩壊開始F"; >;
+//float3 Fracture_FadeStartFrame : CONTROLOBJECT < string name = "(self)"; string item = "ﾌｪｰﾄﾞ開始F"; >;
+//float3 Fracture_FadeSpanFrame  : CONTROLOBJECT < string name = "(self)"; string item = "ﾌｪｰﾄﾞ期間F"; >;
+
+// Rodriguesの回転公式
+float3 Fracture_Rotate3D(float3 r, float3 n, float theta) {
+    n = normalize(n);
+    return r * cos(theta) + n * dot(r, n) * (1.0 - cos(theta)) + cross(n, r) * sin(theta);
+}
+
+// https://www.shadertoy.com/view/4djSRW (MIT License)
+float3 Fracture_Hash33(float3 p) {
+   float3 p3 = frac(p * float3(0.1031, 0.1030, 0.0973));
+   p3 += dot(p3, p3.yzx + 33.33);
+   return frac((p3.xxy + p3.yzz) * p3.zyx); 
+}
+
+static float FRACTURE_IMPACT_DIR_RND = 0.5;
+static float FRACTURE_IMPACT_SPEED_RND = 0.3;
+static float FRACTURE_ROTATE_SPEED_RND = 0.3;
+
+float4 Fracture_TranslatePosition(float4 iPosition, float4 iGravityCenter) {
+    if (iGravityCenter.w <= 0.0)
+        return mul(iPosition, Fracture_OriginMatrix);
+
+    float3 random1 = Fracture_Hash33(iGravityCenter.xyz);
+    float3 random2 = Fracture_Hash33(iGravityCenter.xyz + 3.3);
+    float3 random3 = Fracture_Hash33(iGravityCenter.xyz + 6.7);
+
+    float3 position = mul(iPosition, Fracture_OriginMatrix).xyz;
+    float3 gravityCenter = mul(float4(iGravityCenter.xyz, 1.0), Fracture_OriginMatrix).xyz;
+    float3 breakCenter = mul(float4(Fracture_BreakCenter, 1.0), Fracture_OriginMatrix).xyz;
+    float breakStartFrame = distance(gravityCenter, breakCenter) / Fracture_BreakSpeed + Fracture_BreakStartFrame;
+    float3 direction = normalize(gravityCenter - breakCenter);
+    direction = normalize(direction + (random2 - 0.5) * 2.0 * FRACTURE_IMPACT_DIR_RND);
+    float3 velocity = Fracture_ImpactSpeed.x * direction;
+    velocity *= 1.0 + (random1.x - 0.5) * 2.0 * FRACTURE_IMPACT_SPEED_RND;
+    float currentFrame = Fracture_Time * 30.0;
+    float elapsedFrame = max(0.0, currentFrame - breakStartFrame);
+
+    float3 oGravityCenter = gravityCenter + elapsedFrame * velocity
+        + 0.5 * elapsedFrame * elapsedFrame * Fracture_GravityVector;
+
+    float rotateSpeed = Fracture_RotateSpeed * (1.0 + (random1.z - 0.5) * 2.0 * FRACTURE_ROTATE_SPEED_RND);
+    float rotateAngle = radians(Fracture_RotateInitial + elapsedFrame * rotateSpeed) * (elapsedFrame > 0.0);
+    float3 offset = Fracture_Rotate3D(position - gravityCenter, random3 - 0.5, rotateAngle);
+
+    float3 oPosition = oGravityCenter + offset;
+    return float4(oPosition, iPosition.w);
+}

@@ -4,6 +4,9 @@
 // {{{ scale.fx
 #include "../shader/Scale.fxsub"
 // }}
+// {{{ fracture.fx
+#include "../shader/Fracture.fxsub"
+// }}}
 
 #define TEXTURE_FILTER LINEAR
 #define TEXTURE_MIP_FILTER LINEAR
@@ -413,6 +416,11 @@ float3 GetSpecularHighlight(float3 normal, float2 coord)
 void MainVS(
 	in float4 Position : POSITION,
 	in float4 Texcoord : TEXCOORD0,
+// {{{ fracture.fx
+#ifdef FRACTURE_ENABLED
+	in float4 Texcoord2 : TEXCOORD1,
+#endif
+// }}}
 	in float3 Normal : NORMAL,
 	out float4 oTexcoord0 : TEXCOORD0,
 	out float3 oTexcoord1 : TEXCOORD1,
@@ -421,6 +429,11 @@ void MainVS(
 {
 	oTexcoord0 = Texcoord;
 	oTexcoord1 = Normal;
+// {{{ fracture.fx
+#ifdef FRACTURE_ENABLED
+	Position = Fracture_TranslatePosition(Position, Texcoord2);
+#endif
+// }}}
 // {{{ scale.fx
 #ifdef SCALING_ENABLED
 	Position = ScalePosition(Position);

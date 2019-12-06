@@ -5,6 +5,9 @@
 // {{{ scale.fx
 #include "../shader/Scale.fxsub"
 // }}}
+// {{{ fracture.fx
+#include "../shader/Fracture.fxsub"
+// }}}
 
 #if SUN_SHADOW_QUALITY == 1
 #	define SHADOW_MAP_SIZE 512
@@ -37,12 +40,22 @@ sampler DiffuseMapSamp = sampler_state
 void CascadeShadowMapVS(
 	in float4 Position : POSITION,
 	in float2 Texcoord : TEXCOORD0,
+// {{{ fracture.fx
+#ifdef FRACTURE_ENABLED
+	in float4 Texcoord2 : TEXCOORD1,
+#endif
+// }}}
 	out float2 oTexcoord0 : TEXCOORD0,
 	out float4 oTexcoord1 : TEXCOORD1,
 	out float4 oPosition : POSITION)
 {
 	oTexcoord0 = Texcoord;
 
+// {{{ fracture.fx
+#ifdef FRACTURE_ENABLED
+	Position = Fracture_TranslatePosition(Position, Texcoord2);
+#endif
+// }}}
 // {{{ scale.fx
 #ifdef SCALING_ENABLED
     Position = ScalePosition(Position);

@@ -3,6 +3,9 @@
 // {{{ scale.fx
 #include "../shader/Scale.fxsub"
 // }}}
+// {{{ fracture.fx
+#include "../shader/Fracture.fxsub"
+// }}}
 
 #if SSAO_RECIEVER_ALPHA_MAP_ENABLE
 texture DiffuseMap: MATERIALTEXTURE;
@@ -17,9 +20,19 @@ sampler DiffuseMapSamp = sampler_state {
 void DepthObjectVS(
 	in float4 Position : POSITION,
 	in float2 Texcoord : TEXCOORD0,
+// {{{ fracture.fx
+#ifdef FRACTURE_ENABLED
+	in float4 Texcoord2 : TEXCOORD1,
+#endif
+// }}}
 	out float2 oTexcoord : TEXCOORD0,
 	out float4 oPosition : POSITION)
 {
+// {{{ fracture.fx
+#ifdef FRACTURE_ENABLED
+	Position = Fracture_TranslatePosition(Position, Texcoord2);
+#endif
+// }}}
 // {{{ scale.fx
 #ifdef SCALING_ENABLED
 	Position = ScalePosition(Position);
