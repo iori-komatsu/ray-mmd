@@ -1,6 +1,9 @@
 #include "../ray.conf"
 #include "../shader/math.fxsub"
 #include "../shader/common.fxsub"
+// {{{ scale.fx
+#include "../shader/Scale.fxsub"
+// }}
 
 #define TEXTURE_FILTER LINEAR
 #define TEXTURE_MIP_FILTER LINEAR
@@ -418,6 +421,11 @@ void MainVS(
 {
 	oTexcoord0 = Texcoord;
 	oTexcoord1 = Normal;
+// {{{ scale.fx
+#ifdef SCALING_ENABLED
+	Position = ScalePosition(Position);
+#endif
+// }}
 	oPosition = mul(Position, matWorldViewProject);
 	oTexcoord2 = Position;
 }

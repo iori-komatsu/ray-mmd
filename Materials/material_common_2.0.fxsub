@@ -1460,6 +1460,11 @@ void MaterialVS(
 #if OCCLUSION_MAP_TYPE == 2 || OCCLUSION_MAP_TYPE == 3
 	oTexcoord2 = Texcoord2;
 #endif
+// {{{ scale.fx
+#ifdef SCALING_ENABLED
+    Position = ScalePosition(Position);
+#endif
+// }}}
 	oPosition = mul(Position, matWorldViewProject);
 	oWorldPos = float4(Position.xyz, oPosition.w);
 }

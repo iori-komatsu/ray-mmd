@@ -1,5 +1,8 @@
 #include "../ray.conf"
 #include "../shader/common.fxsub"
+// {{{ scale.fx
+#include "../shader/Scale.fxsub"
+// }}}
 
 #if SSAO_RECIEVER_ALPHA_MAP_ENABLE
 texture DiffuseMap: MATERIALTEXTURE;
@@ -17,6 +20,11 @@ void DepthObjectVS(
 	out float2 oTexcoord : TEXCOORD0,
 	out float4 oPosition : POSITION)
 {
+// {{{ scale.fx
+#ifdef SCALING_ENABLED
+	Position = ScalePosition(Position);
+#endif
+// }}}
 	oTexcoord = Texcoord;
 	oPosition = mul(Position, matViewProject);
 }

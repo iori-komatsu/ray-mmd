@@ -1,0 +1,22 @@
+// {{{ scale.fx
+
+// スケール変換用パラメータ
+float3 ScalingOrigin   : CONTROLOBJECT < string name = "ScaleControl.pmd"; string item = "ｽｹｰﾙ原点"; >;
+float3 ScalingXYZ      : CONTROLOBJECT < string name = "ScaleControl.pmd"; string item = "ｽｹｰﾙ変更"; >;
+float ScalingExpansion : CONTROLOBJECT < string name = "ScaleControl.pmd"; string item = "拡大"; >;
+float ScalingReduction : CONTROLOBJECT < string name = "ScaleControl.pmd"; string item = "縮小"; >;
+static float3 ScalingFactor = float3( clamp( pow(10.0f,  0.1f*ScalingXYZ.x), 0.01f, 1000.0f ),
+                                      clamp( pow(10.0f,  0.1f*ScalingXYZ.y), 0.01f, 1000.0f ),
+                                      clamp( pow(10.0f, -0.1f*ScalingXYZ.z), 0.01f, 1000.0f ) );
+static float ScalingAll = (1.0f + 9.0f*ScalingExpansion)*(1.0f - 0.9f*ScalingReduction);
+
+// スケール変換関数
+float4 ScalePosition(float4 pos) {
+    pos.xyz -= ScalingOrigin;
+    pos.xyz *= ScalingAll;
+    pos.xyz *= ScalingFactor;
+    pos.xyz += ScalingOrigin;
+    return pos;
+}
+
+// }}}

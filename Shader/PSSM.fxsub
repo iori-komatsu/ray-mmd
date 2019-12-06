@@ -2,6 +2,9 @@
 #include "../ray_advanced.conf"
 #include "../shader/common.fxsub"
 #include "../shader/ShadowMapCascaded.fxsub"
+// {{{ scale.fx
+#include "../shader/Scale.fxsub"
+// }}}
 
 #if SUN_SHADOW_QUALITY == 1
 #	define SHADOW_MAP_SIZE 512
@@ -39,6 +42,12 @@ void CascadeShadowMapVS(
 	out float4 oPosition : POSITION)
 {
 	oTexcoord0 = Texcoord;
+
+// {{{ scale.fx
+#ifdef SCALING_ENABLED
+    Position = ScalePosition(Position);
+#endif
+// }}}
 
 	oTexcoord1 = mul(Position, matLightViewProject);
 	oTexcoord1.xy = oTexcoord1.xy * lightCropParams[PSSM_LAYERED_NUM].xy + lightCropParams[PSSM_LAYERED_NUM].zw;
