@@ -1,5 +1,3 @@
-# マテリアルの fx を scale.fx 対応させるスクリプト
-
 def fix(original, filename)
   path_to_root = nil
 
@@ -7,23 +5,21 @@ def fix(original, filename)
     line = line.strip()
 
     if line.include?("{{{ scale.fx")
-      $stderr.puts "#{filename} はすでに変換済みです。"
+      $stderr.puts "#{filename} is already converted."
       exit 0
     end
 
-    # コメントアウトされた行をスキップする
     if %r|^//| =~ line
       next
     end
 
-    # material_common_2.0.fxsub を include している場所を探す
     if %r|\#include +\"([./]*)material_common_2.0.fxsub\"| =~ line
       path_to_root = "../#{$1}"
     end
   end
 
   unless path_to_root
-    $stderr.puts "#{filename} は material_common_2.0.fxsub を include していません。"
+    $stderr.puts "#{filename} does not include material_common_2.0.fxsub."
     exit 1
   end
 
@@ -63,7 +59,7 @@ def main()
     open(dest, "w") do |output|
       output.write(fixed)
     end
-    $stderr.puts "Success: #{filename} → #{dest}"
+    $stderr.puts "Success: #{filename} -> #{dest}"
   end
 end
 

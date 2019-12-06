@@ -1,5 +1,3 @@
-# ファイル名に _scale を付け加えてコピーする
-
 def new_name(filename)
   dirname, basename = File.split(filename)
   parts = basename.split(".")
@@ -25,7 +23,7 @@ def main()
     open(dest, "w") do |output|
       output.write(content)
     end
-    $stderr.puts "Success: #{filename} → #{dest}"
+    $stderr.puts "Success: #{filename} -> #{dest}"
   end
 end
 
