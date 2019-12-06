@@ -42,7 +42,7 @@ float4 Fracture_TranslatePosition(float4 iPosition, float4 iGravityCenter) {
 
     float3 position = mul(iPosition, Fracture_OriginMatrix).xyz;
     float3 gravityCenter = mul(float4(iGravityCenter.xyz, 1.0), Fracture_OriginMatrix).xyz;
-    float3 breakCenter = mul(float4(Fracture_BreakCenter, 1.0), Fracture_OriginMatrix).xyz;
+    float3 breakCenter = Fracture_BreakCenter;
     float breakStartFrame = distance(gravityCenter, breakCenter) / Fracture_BreakSpeed + Fracture_BreakStartFrame;
     float3 direction = normalize(gravityCenter - breakCenter);
     direction = normalize(direction + (random2 - 0.5) * 2.0 * FRACTURE_IMPACT_DIR_RND);
