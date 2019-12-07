@@ -32,15 +32,18 @@ static float FRACTURE_IMPACT_DIR_RND = 0.5;
 static float FRACTURE_IMPACT_SPEED_RND = 0.3;
 static float FRACTURE_ROTATE_SPEED_RND = 0.3;
 
-float4 Fracture_TranslatePosition(float4 iPosition, float4 iGravityCenter) {
-    if (iGravityCenter.w <= 0.0)
+float4 Fracture_TranslatePosition(float4 iPosition, float4 iGravityCenter, inout float3 ioNormal) {
+    if (iGravityCenter.w <= 0.0) {
+        ioNormal = mul(ioNormal, Fracture_OriginMatrix);
         return mul(iPosition, Fracture_OriginMatrix);
+    }
 
     float3 random1 = Fracture_Hash33(iGravityCenter.xyz);
     float3 random2 = Fracture_Hash33(iGravityCenter.xyz + 3.3);
     float3 random3 = Fracture_Hash33(iGravityCenter.xyz + 6.7);
 
     float3 position = mul(iPosition, Fracture_OriginMatrix).xyz;
+    float3 normal = mul(ioNormal, Fracture_OriginMatrix).xyz;
     float3 gravityCenter = mul(float4(iGravityCenter.xyz, 1.0), Fracture_OriginMatrix).xyz;
     float3 breakCenter = Fracture_BreakCenter;
     float breakStartFrame = distance(gravityCenter, breakCenter) / Fracture_BreakSpeed + Fracture_BreakStartFrame;
@@ -57,7 +60,9 @@ float4 Fracture_TranslatePosition(float4 iPosition, float4 iGravityCenter) {
     float rotateSpeed = Fracture_RotateSpeed * (1.0 + (random1.z - 0.5) * 2.0 * FRACTURE_ROTATE_SPEED_RND);
     float rotateAngle = radians(Fracture_RotateInitial + elapsedFrame * rotateSpeed) * (elapsedFrame > 0.0);
     float3 offset = Fracture_Rotate3D(position - gravityCenter, random3 - 0.5, rotateAngle);
+    float3 rotatedNormal = Fracture_Rotate3D(normal, random3 - 0.5, rotateAngle);
 
     float3 oPosition = oGravityCenter + offset;
+    ioNormal = rotatedNormal;
     return float4(oPosition, iPosition.w);
 }

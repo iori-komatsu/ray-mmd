@@ -427,13 +427,13 @@ void MainVS(
 	out float3 oTexcoord2 : TEXCOORD2,
 	out float4 oPosition : POSITION)
 {
-	oTexcoord0 = Texcoord;
-	oTexcoord1 = Normal;
 // {{{ fracture.fx
 #ifdef FRACTURE_ENABLED
-	Position = Fracture_TranslatePosition(Position, Texcoord2);
+	Position = Fracture_TranslatePosition(Position, Texcoord2, /* inout */ Normal);
 #endif
 // }}}
+	oTexcoord0 = Texcoord;
+	oTexcoord1 = Normal;
 // {{{ scale.fx
 #ifdef SCALING_ENABLED
 	Position = ScalePosition(Position);

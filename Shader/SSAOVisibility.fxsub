@@ -30,7 +30,8 @@ void DepthObjectVS(
 {
 // {{{ fracture.fx
 #ifdef FRACTURE_ENABLED
-	Position = Fracture_TranslatePosition(Position, Texcoord2);
+	float3 notused;
+	Position = Fracture_TranslatePosition(Position, Texcoord2, /* inout */ notused);
 #endif
 // }}}
 // {{{ scale.fx

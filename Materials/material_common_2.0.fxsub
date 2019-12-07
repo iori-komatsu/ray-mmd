@@ -1466,16 +1466,16 @@ void MaterialVS(
 	out float4 oWorldPos  : TEXCOORD3,
 	out float4 oPosition  : POSITION)
 {
+// {{{ fracture.fx
+#ifdef FRACTURE_ENABLED
+	Position = Fracture_TranslatePosition(Position, Texcoord2, /* inout */ Normal);
+#endif
+// }}}
 	oNormal = Normal;
 	oTexcoord1 = Texcoord1;
 #if OCCLUSION_MAP_TYPE == 2 || OCCLUSION_MAP_TYPE == 3
 	oTexcoord2 = Texcoord2;
 #endif
-// {{{ fracture.fx
-#ifdef FRACTURE_ENABLED
-	Position = Fracture_TranslatePosition(Position, Texcoord2);
-#endif
-// }}}
 // {{{ scale.fx
 #ifdef SCALING_ENABLED
     Position = ScalePosition(Position);
