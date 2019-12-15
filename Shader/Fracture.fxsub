@@ -34,7 +34,7 @@ static float FRACTURE_ROTATE_SPEED_RND = 0.3;
 
 float4 Fracture_TranslatePosition(float4 iPosition, float4 iGravityCenter, inout float3 ioNormal) {
     if (iGravityCenter.w <= 0.0) {
-        ioNormal = mul(ioNormal, Fracture_OriginMatrix);
+        ioNormal = mul(float4(ioNormal, 0.0), Fracture_OriginMatrix);
         return mul(iPosition, Fracture_OriginMatrix);
     }
 
@@ -43,7 +43,7 @@ float4 Fracture_TranslatePosition(float4 iPosition, float4 iGravityCenter, inout
     float3 random3 = Fracture_Hash33(iGravityCenter.xyz + 6.7);
 
     float3 position = mul(iPosition, Fracture_OriginMatrix).xyz;
-    float3 normal = mul(ioNormal, Fracture_OriginMatrix).xyz;
+    float3 normal = mul(float4(ioNormal, 0.0), Fracture_OriginMatrix).xyz;
     float3 gravityCenter = mul(float4(iGravityCenter.xyz, 1.0), Fracture_OriginMatrix).xyz;
     float3 breakCenter = Fracture_BreakCenter;
     float breakStartFrame = distance(gravityCenter, breakCenter) / Fracture_BreakSpeed + Fracture_BreakStartFrame;
