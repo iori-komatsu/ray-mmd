@@ -1,0 +1,13 @@
+float4 Iori_PostEffectExamplePS(in float2 coord : TEXCOORD0, in float3 viewdir : TEXCOORD1) : COLOR
+{
+	float4 MRT0 = tex2Dlod(Gbuffer5Map, float4(coord, 0, 0));
+	float4 MRT1 = tex2Dlod(Gbuffer6Map, float4(coord, 0, 0));
+	float4 MRT2 = tex2Dlod(Gbuffer7Map, float4(coord, 0, 0));
+	float4 MRT3 = tex2Dlod(Gbuffer8Map, float4(coord, 0, 0));
+
+	MaterialParam material;
+	DecodeGbuffer(MRT0, MRT1, MRT2, MRT3, material);
+
+	float3 color = float3(material.linearDepth / 2000.0, 0.0, 0.0);
+	return float4(color, 1.0);
+}

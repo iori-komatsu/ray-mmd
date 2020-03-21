@@ -108,6 +108,10 @@ static float3 mColorBalanceM = float3(mColBalanceRM, mColBalanceGM, mColBalanceB
 #	include "shader/PostProcessSSR.fxsub"
 #endif
 
+#if IORI_POST_EFFECT_EXAMPLE
+#   include "shader/PostEffectExample.fxsub"
+#endif
+
 #if BOKEH_QUALITY
 #	include "shader/PostProcessHexDOF.fxsub"
 #endif
@@ -252,6 +256,11 @@ technique DeferredLighting<
 	"RenderColorTarget=SSRLightX4Map;	  Pass=SSRGaussionBlurY4;"
 
 	"RenderColorTarget=ShadingMap;		  Pass=SSRFinalCombie;"
+#endif
+
+#if IORI_POST_EFFECT_EXAMPLE
+	"RenderColorTarget=ShadingMap;"
+	"Pass=ComputePostEffectExample;"
 #endif
 
 #if BOKEH_QUALITY
@@ -565,6 +574,14 @@ technique DeferredLighting<
 		SrcBlend = ONE; DestBlend = INVSRCALPHA;
 		VertexShader = compile vs_3_0 ScreenSpaceQuadVS();
 		PixelShader  = compile ps_3_0 SSRFinalCombiePS();
+	}
+#endif
+#if IORI_POST_EFFECT_EXAMPLE
+	pass ComputePostEffectExample<string Script= "Draw=Buffer;";>{
+		AlphaBlendEnable = false; AlphaTestEnable = false;
+		ZEnable = false; ZWriteEnable = false;
+		VertexShader = compile vs_3_0 ScreenSpaceQuadVS();
+		PixelShader  = compile ps_3_0 Iori_PostEffectExamplePS();
 	}
 #endif
 #if BOKEH_QUALITY
