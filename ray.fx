@@ -259,11 +259,11 @@ technique DeferredLighting<
 #endif
 
 #if IORI_POST_EFFECT_EXAMPLE
-	"RenderColorTarget=;"
+	"RenderColorTarget=ShadingMap;"
 	"Pass=ComputePostEffectExample;"
 #endif
 
-#if 0
+#if 1
 #if BOKEH_QUALITY
 	"RenderColorTarget0=AutoFocalMap; Pass=ComputeFocalDistance;"
 

@@ -1,9 +1,57 @@
+// 1 output, 3 inputs
+float Hash13(float3 p) {
+	p = float3(
+		dot(p, float3(127.1,311.7, 74.7)),
+		dot(p, float3(269.5,183.3,246.1)),
+		dot(p, float3(113.5,271.9,124.6))
+	);
+	return frac(sin(p) * 43758.5453123);
+}
+
+float ValueNoise(float3 p) {
+	float3 i = floor(p);
+	float3 f = frac(p);
+
+	float v0 = Hash13(i + float3(0, 0, 0));
+	float v1 = Hash13(i + float3(1, 0, 0));
+	float v2 = Hash13(i + float3(0, 1, 0));
+	float v3 = Hash13(i + float3(1, 1, 0));
+	float v4 = Hash13(i + float3(0, 0, 1));
+	float v5 = Hash13(i + float3(1, 0, 1));
+	float v6 = Hash13(i + float3(0, 1, 1));
+	float v7 = Hash13(i + float3(1, 1, 1));
+
+	float3 alpha = smoothstep(0.0, 1.0, f);
+
+	return lerp(
+		lerp(
+			lerp(v0, v1, alpha.x),
+			lerp(v2, v3, alpha.x),
+			alpha.y
+		),
+		lerp(
+			lerp(v4, v5, alpha.x),
+			lerp(v6, v7, alpha.x),
+			alpha.y
+		),
+		alpha.z
+	);
+}
+
+float FBM(float3 p) {
+	float v = 0.0;
+	v += 1.0 * ValueNoise(p / 1.0);
+	v += 2.0 * ValueNoise(p / 2.0);
+	v += 4.0 * ValueNoise(p / 4.0);
+	v += 8.0 * ValueNoise(p / 8.0);
+	return v / (1 + 2 + 4 + 8);
+}
+
 float4 Iori_PostEffectExamplePS(
 	in float2 coord : TEXCOORD0,
 	in float3 viewdir : TEXCOORD1,
 	uniform sampler source) : COLOR
 {
-	/*
 	float4 MRT0 = tex2Dlod(Gbuffer5Map, float4(coord, 0, 0));
 	float4 MRT1 = tex2Dlod(Gbuffer6Map, float4(coord, 0, 0));
 	float4 MRT2 = tex2Dlod(Gbuffer7Map, float4(coord, 0, 0));
@@ -11,9 +59,21 @@ float4 Iori_PostEffectExamplePS(
 
 	MaterialParam material;
 	DecodeGbuffer(MRT0, MRT1, MRT2, MRT3, material);
-	*/
 
-	// Sobel Filter
+	float depth = material.linearDepth;
+
+	float cloud = (FBM(float3(coord * 100, 0.0)) + 1.0) * 0.5;
+
+	float3 original = tex2Dlod(source, float4(coord, 0, 0)).rgb;
+	float3 color = lerp((float3)cloud, original, exp(-0.0005 * depth));
+	return float4(color, 1.0);
+}
+
+float4 Iori_SobelPS(
+	in float2 coord : TEXCOORD0,
+	in float3 viewdir : TEXCOORD1,
+	uniform sampler source) : COLOR
+{
 	float c;
 	float2 p;
 	float2 g = float2(0, 0);
