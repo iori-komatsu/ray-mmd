@@ -259,10 +259,11 @@ technique DeferredLighting<
 #endif
 
 #if IORI_POST_EFFECT_EXAMPLE
-	"RenderColorTarget=ShadingMap;"
+	"RenderColorTarget=;"
 	"Pass=ComputePostEffectExample;"
 #endif
 
+#if 0
 #if BOKEH_QUALITY
 	"RenderColorTarget0=AutoFocalMap; Pass=ComputeFocalDistance;"
 
@@ -378,6 +379,7 @@ technique DeferredLighting<
 	"RenderDepthStencilTarget=;"
 	"Pass=SMAANeighborhoodBlendingFinal;"
 #endif
+#endif // if 0
 ;>
 {
 #if SUN_LIGHT_ENABLE && SUN_SHADOW_QUALITY

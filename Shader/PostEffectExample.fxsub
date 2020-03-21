@@ -3,6 +3,7 @@ float4 Iori_PostEffectExamplePS(
 	in float3 viewdir : TEXCOORD1,
 	uniform sampler source) : COLOR
 {
+	/*
 	float4 MRT0 = tex2Dlod(Gbuffer5Map, float4(coord, 0, 0));
 	float4 MRT1 = tex2Dlod(Gbuffer6Map, float4(coord, 0, 0));
 	float4 MRT2 = tex2Dlod(Gbuffer7Map, float4(coord, 0, 0));
@@ -10,9 +11,30 @@ float4 Iori_PostEffectExamplePS(
 
 	MaterialParam material;
 	DecodeGbuffer(MRT0, MRT1, MRT2, MRT3, material);
+	*/
 
-	float3 color = tex2Dlod(source, float4(coord, 0, 0)).rgb;
-	float d = material.linearDepth / 2000.0;
-	color = (color + float3(d, 0, 0)) * 0.5;
+	// Sobel Filter
+	float c;
+	float2 p;
+	float2 g = float2(0, 0);
+
+	#define CONVOLVE(offsetX, offsetY, coeffX, coeffY) \
+		p = coord + float2(offsetX, offsetY) * ViewportOffset2; \
+		c = tex2Dlod(source, float4(p, 0, 0)).rgb; \
+		g += length(c) * float2(coeffX, coeffY);
+
+	CONVOLVE(-1, -1,  1,  1)
+	CONVOLVE( 0, -1,  0,  2)
+	CONVOLVE( 1, -1, -1,  1)
+	CONVOLVE(-1,  0,  2,  0)
+	CONVOLVE( 0,  0,  0,  0)
+	CONVOLVE( 1,  0, -2,  0)
+	CONVOLVE(-1,  1,  1, -1)
+	CONVOLVE( 0,  1,  0, -2)
+	CONVOLVE( 1,  1, -1, -1)
+
+	#undef CONVOLVE
+
+	float3 color = length(g);
 	return float4(color, 1.0);
 }
