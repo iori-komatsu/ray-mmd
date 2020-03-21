@@ -1,4 +1,7 @@
-float4 Iori_PostEffectExamplePS(in float2 coord : TEXCOORD0, in float3 viewdir : TEXCOORD1) : COLOR
+float4 Iori_PostEffectExamplePS(
+	in float2 coord : TEXCOORD0,
+	in float3 viewdir : TEXCOORD1,
+	uniform sampler source) : COLOR
 {
 	float4 MRT0 = tex2Dlod(Gbuffer5Map, float4(coord, 0, 0));
 	float4 MRT1 = tex2Dlod(Gbuffer6Map, float4(coord, 0, 0));
@@ -8,6 +11,8 @@ float4 Iori_PostEffectExamplePS(in float2 coord : TEXCOORD0, in float3 viewdir :
 	MaterialParam material;
 	DecodeGbuffer(MRT0, MRT1, MRT2, MRT3, material);
 
-	float3 color = float3(material.linearDepth / 2000.0, 0.0, 0.0);
+	float3 color = tex2Dlod(source, float4(coord, 0, 0)).rgb;
+	float d = material.linearDepth / 2000.0;
+	color = (color + float3(d, 0, 0)) * 0.5;
 	return float4(color, 1.0);
 }

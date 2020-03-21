@@ -581,7 +581,7 @@ technique DeferredLighting<
 		AlphaBlendEnable = false; AlphaTestEnable = false;
 		ZEnable = false; ZWriteEnable = false;
 		VertexShader = compile vs_3_0 ScreenSpaceQuadVS();
-		PixelShader  = compile ps_3_0 Iori_PostEffectExamplePS();
+		PixelShader  = compile ps_3_0 Iori_PostEffectExamplePS(ShadingMapPointSamp);
 	}
 #endif
 #if BOKEH_QUALITY
