@@ -163,6 +163,19 @@ float4 ScreenSpaceQuadVS(
 	return Position;
 }
 
+float4 ScreenSpaceQuadVS2(
+	in float4 Position : POSITION,
+	in float4 Texcoord : TEXCOORD,
+	out float4 oTexcoord0 : TEXCOORD0,
+	out float3 oTexcoord1 : TEXCOORD1) : POSITION
+{
+	oTexcoord0 = Texcoord;
+	oTexcoord0.xy += ViewportOffset;
+	oTexcoord0.zw = oTexcoord0.xy * ViewportSize;
+	oTexcoord1 = mul(Position, matViewProjectInverse).xyz;
+	return Position;
+}
+
 float4 ScreenSpaceQuadOffsetVS(
 	in float4 Position : POSITION,
 	in float2 Texcoord : TEXCOORD,
@@ -582,7 +595,7 @@ technique DeferredLighting<
 	pass ComputePostEffectExample<string Script= "Draw=Buffer;";>{
 		AlphaBlendEnable = false; AlphaTestEnable = false;
 		ZEnable = false; ZWriteEnable = false;
-		VertexShader = compile vs_3_0 ScreenSpaceQuadVS();
+		VertexShader = compile vs_3_0 ScreenSpaceQuadVS2();
 		PixelShader  = compile ps_3_0 Iori_PostEffectExamplePS(ShadingMapPointSamp);
 	}
 #endif

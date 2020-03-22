@@ -1,3 +1,50 @@
+float IK_SphereFunction(float3 p, float r) {
+	return length(p) - r;
+}
+
+float3 IK_Normal(float3 p, float r) {
+	float eps = 0.0001;
+
+	float d0 = IK_SphereFunction(p, r);
+	float dx = IK_SphereFunction(p + float3(-eps, 0, 0), r);
+	float dy = IK_SphereFunction(p + float3(0, -eps, 0), r);
+	float dz = IK_SphereFunction(p + float3(0, 0, -eps), r);
+
+	return normalize(float3(d0 - dx, d0 - dy, d0 - dz));
+}
+
+float4 Iori_PostEffectExamplePS(
+	in float2 coord : TEXCOORD0,
+	in float3 worldPos : TEXCOORD1,
+	uniform sampler source) : COLOR
+{
+	float4 MRT0 = tex2Dlod(Gbuffer5Map, float4(coord, 0, 0));
+	float4 MRT1 = tex2Dlod(Gbuffer6Map, float4(coord, 0, 0));
+	float4 MRT2 = tex2Dlod(Gbuffer7Map, float4(coord, 0, 0));
+	float4 MRT3 = tex2Dlod(Gbuffer8Map, float4(coord, 0, 0));
+
+	MaterialParam material;
+	DecodeGbuffer(MRT0, MRT1, MRT2, MRT3, material);
+
+	float4 color = float4(0, 0, 0, 0);
+	float3 rayDir = normalize(worldPos - CameraPosition);
+	float3 ray = CameraPosition;
+	float3 r = 5.0;
+	for (int i = 0; i < 16; i++) {
+		float d = IK_SphereFunction(ray, r);
+		if (d < 0.0001) {
+			float3 normal = IK_Normal(ray, r);
+			float diffuse = dot(normal, -SunDirection);
+			color = float4(diffuse, diffuse, diffuse, 1);
+			break;
+		}
+		ray += d * rayDir;
+	}
+	clip(color.a - 0.5);
+	return color;
+}
+
+/*
 // 1 output, 3 inputs
 float Hash13(float3 p) {
 	p = float3(
@@ -47,28 +94,6 @@ float FBM(float3 p) {
 	return v / (1 + 2 + 4 + 8);
 }
 
-float4 Iori_PostEffectExamplePS(
-	in float2 coord : TEXCOORD0,
-	in float3 viewdir : TEXCOORD1,
-	uniform sampler source) : COLOR
-{
-	float4 MRT0 = tex2Dlod(Gbuffer5Map, float4(coord, 0, 0));
-	float4 MRT1 = tex2Dlod(Gbuffer6Map, float4(coord, 0, 0));
-	float4 MRT2 = tex2Dlod(Gbuffer7Map, float4(coord, 0, 0));
-	float4 MRT3 = tex2Dlod(Gbuffer8Map, float4(coord, 0, 0));
-
-	MaterialParam material;
-	DecodeGbuffer(MRT0, MRT1, MRT2, MRT3, material);
-
-	float depth = material.linearDepth;
-
-	float cloud = (FBM(float3(coord * 100, 0.0)) + 1.0) * 0.5;
-
-	float3 original = tex2Dlod(source, float4(coord, 0, 0)).rgb;
-	float3 color = lerp((float3)cloud, original, exp(-0.0005 * depth));
-	return float4(color, 1.0);
-}
-
 float4 Iori_SobelPS(
 	in float2 coord : TEXCOORD0,
 	in float3 viewdir : TEXCOORD1,
@@ -98,3 +123,4 @@ float4 Iori_SobelPS(
 	float3 color = length(g);
 	return float4(color, 1.0);
 }
+*/
