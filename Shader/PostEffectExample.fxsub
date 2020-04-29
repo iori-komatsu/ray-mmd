@@ -13,6 +13,19 @@ float3 IK_Normal(float3 p, float r) {
 	return normalize(float3(d0 - dx, d0 - dy, d0 - dz));
 }
 
+float4 Iori_PostEffectExampleVS(
+	in float4 Position : POSITION,
+	in float4 Texcoord : TEXCOORD,
+	out float4 oTexcoord0 : TEXCOORD0,
+	out float3 oTexcoord1 : TEXCOORD1) : POSITION
+{
+	oTexcoord0 = Texcoord;
+	oTexcoord0.zw = oTexcoord0.xy * ViewportSize;
+	oTexcoord1 = mul(Position, matViewProjectInverse).xyz;
+
+	return Position;
+}
+
 float4 Iori_PostEffectExamplePS(
 	in float2 coord : TEXCOORD0,
 	in float3 worldPos : TEXCOORD1,
@@ -28,17 +41,20 @@ float4 Iori_PostEffectExamplePS(
 
 	float4 color = float4(0, 0, 0, 0);
 	float3 rayDir = normalize(worldPos - CameraPosition);
-	float3 ray = CameraPosition;
-	float3 r = 5.0;
+	float depth = 0.0;
+	float3 r = 10.0;
 	for (int i = 0; i < 16; i++) {
-		float d = IK_SphereFunction(ray, r);
-		if (d < 0.0001) {
-			float3 normal = IK_Normal(ray, r);
-			float diffuse = dot(normal, -SunDirection);
-			color = float4(diffuse, diffuse, diffuse, 1);
+		float3 p = CameraPosition + depth * rayDir;
+		float dist = IK_SphereFunction(p, r);
+		if (dist < 0.0001) {
+			clip(material.linearDepth - depth);
+			//float3 normal = IK_Normal(p, r);
+			//float diffuse = dot(normal, -SunDirection) + 0.2;
+			//color = float4(diffuse, diffuse, diffuse, 1);
+			color = float4(p, 1);
 			break;
 		}
-		ray += d * rayDir;
+		depth += dist;
 	}
 	clip(color.a - 0.5);
 	return color;
