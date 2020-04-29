@@ -16,45 +16,50 @@ float3 IK_Normal(float3 p, float r) {
 float4 Iori_PostEffectExampleVS(
 	in float4 Position : POSITION,
 	in float4 Texcoord : TEXCOORD,
-	out float4 oTexcoord0 : TEXCOORD0,
-	out float3 oTexcoord1 : TEXCOORD1) : POSITION
+	out float4 oTexcoord0 : TEXCOORD0) : POSITION
 {
 	oTexcoord0 = Texcoord;
+	oTexcoord0.xy += ViewportOffset;
 	oTexcoord0.zw = oTexcoord0.xy * ViewportSize;
-	oTexcoord1 = mul(Position, matViewProjectInverse).xyz;
-
 	return Position;
 }
 
 float4 Iori_PostEffectExamplePS(
-	in float2 coord : TEXCOORD0,
-	in float3 worldPos : TEXCOORD1,
+	in float4 coord : TEXCOORD0,
 	uniform sampler source) : COLOR
 {
-	float4 MRT0 = tex2Dlod(Gbuffer5Map, float4(coord, 0, 0));
-	float4 MRT1 = tex2Dlod(Gbuffer6Map, float4(coord, 0, 0));
-	float4 MRT2 = tex2Dlod(Gbuffer7Map, float4(coord, 0, 0));
-	float4 MRT3 = tex2Dlod(Gbuffer8Map, float4(coord, 0, 0));
+	float4 MRT0 = tex2Dlod(Gbuffer5Map, float4(coord.xy, 0, 0));
+	float4 MRT1 = tex2Dlod(Gbuffer6Map, float4(coord.xy, 0, 0));
+	float4 MRT2 = tex2Dlod(Gbuffer7Map, float4(coord.xy, 0, 0));
+	float4 MRT3 = tex2Dlod(Gbuffer8Map, float4(coord.xy, 0, 0));
 
 	MaterialParam material;
 	DecodeGbuffer(MRT0, MRT1, MRT2, MRT3, material);
 
-	float4 color = float4(0, 0, 0, 0);
-	float3 rayDir = normalize(worldPos - CameraPosition);
-	float depth = 0.0;
-	float3 r = 10.0;
+	float2 p = (coord.xy - 0.5) * 2.0;
+	float3 rayDir =
+		  matView._13_23_33 / matProject._33
+		+ matView._11_21_31 * p.x / matProject._11
+		- matView._12_22_32 * p.y / matProject._22;
+	rayDir = normalize(rayDir);
+
+	float d = 0;
+	float radius = 10.0;
+	float4 color;
 	for (int i = 0; i < 16; i++) {
-		float3 p = CameraPosition + depth * rayDir;
-		float dist = IK_SphereFunction(p, r);
-		if (dist < 0.0001) {
-			clip(material.linearDepth - depth);
-			//float3 normal = IK_Normal(p, r);
-			//float diffuse = dot(normal, -SunDirection) + 0.2;
-			//color = float4(diffuse, diffuse, diffuse, 1);
-			color = float4(p, 1);
+		float3 rayPos = CameraPosition + d * rayDir;
+		float dist = IK_SphereFunction(rayPos, radius);
+		if (dist < 0.001) {
+			d += dist;
+			// TODO: ‰æ–Ê‚ÌŠOŽü•t‹ß‚Å‚Í‚±‚±‚Å‰ßè‚É clip ‚³‚ê‚Ä‚µ‚Ü‚¤c
+			clip(material.linearDepth - d);
+			rayPos = CameraPosition + d * rayDir;
+			float3 normal = IK_Normal(rayPos, radius);
+			float diffuse = dot(normal, -SunDirection) + 0.2;
+			color = float4(diffuse, diffuse, diffuse, 1);
 			break;
 		}
-		depth += dist;
+		d += dist;
 	}
 	clip(color.a - 0.5);
 	return color;
