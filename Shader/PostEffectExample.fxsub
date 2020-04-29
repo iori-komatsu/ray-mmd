@@ -43,6 +43,8 @@ float4 Iori_PostEffectExamplePS(
 		- matView._12_22_32 * p.y / matProject._22;
 	rayDir = normalize(rayDir);
 
+	float3 frontDir = normalize(matView._13_23_33 / matProject._33);
+
 	float d = 0;
 	float radius = 10.0;
 	float4 color;
@@ -51,18 +53,26 @@ float4 Iori_PostEffectExamplePS(
 		float dist = IK_SphereFunction(rayPos, radius);
 		if (dist < 0.001) {
 			d += dist;
-			// TODO: ‰æ–Ê‚ÌŠOŽü•t‹ß‚Å‚Í‚±‚±‚Å‰ßè‚É clip ‚³‚ê‚Ä‚µ‚Ü‚¤c
-			clip(material.linearDepth - d);
+
+			float depth = dot(frontDir, d * rayDir);
+
+			clip(material.linearDepth - depth);
 			rayPos = CameraPosition + d * rayDir;
 			float3 normal = IK_Normal(rayPos, radius);
 			float diffuse = dot(normal, -SunDirection) + 0.2;
-			color = float4(diffuse, diffuse, diffuse, 1);
-			break;
+			color = float4(diffuse, diffuse, diffuse, 1.0);
+			//float x = exp(-depth * 0.02);
+			//color = float4(x, x, x, 1);
+			return color;
 		}
 		d += dist;
 	}
+
 	clip(color.a - 0.5);
 	return color;
+	//float x = exp(-material.linearDepth * 0.02);
+	//color = float4(x, x, x, 1);
+	//return color;
 }
 
 /*
