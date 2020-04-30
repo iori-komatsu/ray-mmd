@@ -243,6 +243,36 @@ float fbm_4(in float2 x) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
+// 二次方程式 ax^2 + bx + c = 0 の解を求める。
+// 判別式Dの値と解2つを返す。
+float3 SolveQuadraticEquation(float a, float b, float c) {
+	float d = b*b - 4*a*c;
+	float sd = sqrt(d);
+	return float3(d, (-b+sd)/(2*a), (-b-sd)/(2*a));
+}
+
+// 原点を中心とする球とレイの交点を求める
+// 戻り値: xyz成分は交点の座標(存在する場合)、w成分は交点が存在するなら１、そうでないなら０
+float4 RaySphereIntersection(float3 rayPos, float3 rayDir, float sphereRadius) {
+	float3 s = SolveQuadraticEquation(
+		dot(rayDir, rayDir),
+		2*dot(rayPos, rayDir),
+		dot(rayPos, rayPos) - sphereRadius*sphereRadius
+	);
+	if (s.x < 0) {
+		return float4(0, 0, 0, 0);
+	}
+	float t;
+	if (s.y >= 0) {
+		t = s.y;
+	} else if (s.z >= 0) {
+		t = s.z;
+	} else {
+		return float4(0, 0, 0, 0);
+	}
+	return float4(rayPos + t*rayDir, 1);
+}
+
 float IK_SphereFunction(float3 p, float r) {
 	return length(p) - r;
 }
@@ -269,6 +299,31 @@ float4 Iori_PostEffectExampleVS(
 	return Position;
 }
 
+float CastRay(
+	float3 rayPos,
+	float3 rayDir,
+	float sphereRadius,
+	out bool hit,
+	out float3 surfacePos
+) {
+	float d = 0;
+
+	for (int i = 0; i < 16; i++) {
+		float3 p = rayPos + d * rayDir;
+		float dist = IK_SphereFunction(p, sphereRadius);
+		if (dist < 0.001) {
+			d += dist;
+			hit = true;
+			surfacePos = rayPos + d * rayDir;
+			return d;
+		}
+		d += dist;
+	}
+
+	hit = false;
+	return 0;
+}
+
 float4 Iori_PostEffectExamplePS(
 	in float4 coord : TEXCOORD0,
 	uniform sampler source) : COLOR
@@ -287,37 +342,31 @@ float4 Iori_PostEffectExamplePS(
 		+ matView._11_21_31 * p.x / matProject._11
 		- matView._12_22_32 * p.y / matProject._22;
 	rayDir = normalize(rayDir);
+	float3 rayPos = CameraPosition;
 
 	float3 frontDir = normalize(matView._13_23_33 / matProject._33);
 
-	float d = 0;
-	float radius = 10.0;
-	float4 color;
-	for (int i = 0; i < 16; i++) {
-		float3 rayPos = CameraPosition + d * rayDir;
-		float dist = IK_SphereFunction(rayPos, radius);
-		if (dist < 0.001) {
-			d += dist;
+	// 球の半径
+	float sphereRadius = 10.0;
 
-			float depth = dot(frontDir, d * rayDir);
+	float4 sphereP = RaySphereIntersection(rayPos, rayDir, sphereRadius);
 
-			clip(material.linearDepth - depth);
-			rayPos = CameraPosition + d * rayDir;
-			float3 normal = IK_Normal(rayPos, radius);
-			float diffuse = dot(normal, -SunDirection) + 0.2;
-			color = float4(diffuse, diffuse, diffuse, 1.0);
-			//float x = exp(-depth * 0.02);
-			//color = float4(x, x, x, 1);
-			return color;
-		}
-		d += dist;
+	bool hit;
+	float3 surfacePos;
+	float d = CastRay(rayPos, rayDir, sphereRadius, hit, surfacePos);
+
+	if (!hit) {
+		clip(-1);
 	}
 
-	clip(color.a - 0.5);
-	return color;
-	//float x = exp(-material.linearDepth * 0.02);
-	//color = float4(x, x, x, 1);
-	//return color;
+	float depth = dot(frontDir, d * rayDir);
+	clip(material.linearDepth - depth);
+
+	// 色を計算する
+	float3 normal = IK_Normal(surfacePos, sphereRadius);
+	float c = fbm_4(surfacePos) * 0.5 + 0.5;
+	float diffuse = dot(normal, -SunDirection) * c;
+	return float4(diffuse, diffuse, diffuse, 1.0);
 }
 
 /*
