@@ -250,8 +250,7 @@ float2 SolveQuadraticEquation(float a, float b, float c, out float disc) {
 	return float2((-b-sd)/(2*a), (-b+sd)/(2*a));
 }
 
-// 原点を中心とする球とレイの交点を求める
-// 戻り値: 交点の座標(存在する場合)
+// レイと原点を中心とする球の交点を求める
 float3 RaySphereIntersection(float3 rayPos, float3 rayDir, float sphereRadius, out bool hit) {
 	float disc;
 	float2 s = SolveQuadraticEquation(
@@ -277,6 +276,22 @@ float3 RaySphereIntersection(float3 rayPos, float3 rayDir, float sphereRadius, o
 
 	hit = true;
 	return float3(rayPos + t*rayDir);
+}
+
+// レイと平面と交点を求める
+float3 RayPlaneIntersection(float3 rayPos, float3 rayDir, float3 planePoint, float3 planeNormal, out bool hit) {
+	float denom = dot(rayDir, planeNormal);
+	if (abs(denom) < EPSILON) {
+		hit = false;
+		return float3(0, 0, 0);
+	}
+	float t = dot(planePoint - rayPos, planeNormal) / denom;
+	if (t < 0) {
+		hit = false;
+		return float3(0, 0, 0);
+	}
+	hit = true;
+	return rayPos + t*rayDir;
 }
 
 float IK_SphereFunction(float3 p, float r) {
@@ -305,32 +320,45 @@ float4 Iori_PostEffectExampleVS(
 	return Position;
 }
 
+float OpticalDepthAt(float3 p, float sphereRadius) {
+	float u = length(p) / sphereRadius;
+	float densityLo = 0.5;
+	float densityHi = 1.0;
+	float density = (fbm_4(p) * 0.5 + 0.5) * lerp(densityLo, densityHi, u*u);
+	return log(density + EPSILON);
+}
+
 float CastRay(
 	float3 rayPos,
 	float3 rayDir,
+	float3 cameraDir,
 	float sphereRadius,
 	out float3 surfacePos
 ) {
 	bool willHit;
-	RaySphereIntersection(rayPos, rayDir, sphereRadius, willHit);
+	surfacePos = RaySphereIntersection(rayPos, rayDir, sphereRadius, willHit);
 	if (!willHit)  {
 		return -1;
 	}
 
-	float d = 0;
+	static const int N_LAYERS = 5;
+	float3 firstLayerPoint = -cameraDir * sphereRadius;
+	float3 layerInterval = sphereRadius / (N_LAYERS - 1);
 
-	for (int i = 0; i < 32; i++) {
-		float3 p = rayPos + d * rayDir;
-		float dist = IK_SphereFunction(p, sphereRadius);
-		if (dist < 0.001) {
-			d += dist;
-			surfacePos = rayPos + d * rayDir;
-			return d;
+	float opticalDepth = 0;
+
+	for (int i = 0; i < N_LAYERS; i++) {
+		// レイがi番目のレイヤーとぶつかる点を求める
+		float3 layerPoint = firstLayerPoint + (i * layerInterval) * cameraDir;
+		float3 ithPoint = RayPlaneIntersection(rayPos, rayDir, layerPoint, cameraDir, willHit);
+
+		// 球の内側であれば光学的深さを加算する
+		if (IK_SphereFunction(ithPoint, sphereRadius) < EPSILON) {
+			opticalDepth += OpticalDepthAt(ithPoint, sphereRadius);
 		}
-		d += dist;
 	}
 
-	return -1;
+	return exp(opticalDepth);
 }
 
 float4 Iori_PostEffectExamplePS(
@@ -353,23 +381,24 @@ float4 Iori_PostEffectExamplePS(
 	rayDir = normalize(rayDir);
 	float3 rayPos = CameraPosition;
 
-	float3 frontDir = normalize(matView._13_23_33 / matProject._33);
+	float3 cameraDir = normalize(matView._13_23_33 / matProject._33);
 
 	float sphereRadius = 10.0;
 
 	float3 surfacePos;
-	float d = CastRay(rayPos, rayDir, sphereRadius, surfacePos);
+	float alpha = CastRay(rayPos, rayDir, cameraDir, sphereRadius, surfacePos);
 
-	clip(d); // オブジェクトに衝突していない場合は描画しない
+	clip(alpha); // オブジェクトに衝突していない場合は描画しない
 
-	float depth = dot(frontDir, d * rayDir);
+	float d = distance(rayPos, surfacePos);
+	float depth = dot(cameraDir, d * rayDir);
 	clip(material.linearDepth - depth);
 
 	// 色を計算する
-	float3 normal = IK_Normal(surfacePos, sphereRadius);
-	float c = fbm_4(surfacePos) * 0.5 + 0.5;
-	float diffuse = dot(normal, -SunDirection) * c;
-	return float4(diffuse, diffuse, diffuse, 1.0);
+	//float3 normal = IK_Normal(surfacePos, sphereRadius);
+	//float c = fbm_4(surfacePos) * 0.5 + 0.5;
+	//float diffuse = dot(normal, -SunDirection) * c;
+	return float4(0.0, 0.0, 0.0, 1.0 - alpha);
 }
 
 /*

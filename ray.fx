@@ -580,8 +580,9 @@ technique DeferredLighting<
 #endif
 #if IORI_POST_EFFECT_EXAMPLE
 	pass ComputePostEffectExample<string Script= "Draw=Buffer;";>{
-		AlphaBlendEnable = false; AlphaTestEnable = false;
+		AlphaBlendEnable = true; AlphaTestEnable = false;
 		ZEnable = false; ZWriteEnable = false;
+		SrcBlend = SRCALPHA; DestBlend = INVSRCALPHA;
 		VertexShader = compile vs_3_0 Iori_PostEffectExampleVS();
 		PixelShader  = compile ps_3_0 Iori_PostEffectExamplePS(ShadingMapPointSamp);
 	}
