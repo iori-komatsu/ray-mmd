@@ -253,7 +253,7 @@ float mCloudBrightnessP : CONTROLOBJECT<string name = "cloud_controller.pmx"; st
 float mCloudBrightnessM : CONTROLOBJECT<string name = "cloud_controller.pmx"; string item = "Brightness-";>;
 
 static float mCloudCutoff  = lerp(lerp(0.1, 1.0, mCloudCutoffP), 0.0, mCloudCutoffM);
-static float mCloudDensity = lerp(lerp(1.0, 4.0, mCloudDensityP), 0.0, mCloudDensityM);
+static float mCloudDensity = lerp(lerp(0.2, 1.0, mCloudDensityP), 0.0, mCloudDensityM);
 static float mCloudBrightness = lerp(lerp(0.4, 2.0, mCloudBrightnessP), 0.0, mCloudBrightnessM);
 
 // “ñŸ•û’ö® ax^2 + bx + c = 0 ‚Ì‰ğ‚ğ‹‚ß‚é
