@@ -243,6 +243,19 @@ float fbm_4(in float2 x) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
+float3 mCloudPosition : CONTROLOBJECT<string name = "cloud_controller.pmx"; string item = "Position";>;
+float3 mCloudRadius   : CONTROLOBJECT<string name = "cloud_controller.pmx"; string item = "Radius";>;
+float3 mCloudCutoffP  : CONTROLOBJECT<string name = "cloud_controller.pmx"; string item = "Cutoff+";>;
+float3 mCloudCutoffM  : CONTROLOBJECT<string name = "cloud_controller.pmx"; string item = "Cutoff-";>;
+float3 mCloudDensityP : CONTROLOBJECT<string name = "cloud_controller.pmx"; string item = "Density+";>;
+float3 mCloudDensityM : CONTROLOBJECT<string name = "cloud_controller.pmx"; string item = "Density-";>;
+float3 mCloudBrightnessP : CONTROLOBJECT<string name = "cloud_controller.pmx"; string item = "Brightness+";>;
+float3 mCloudBrightnessM : CONTROLOBJECT<string name = "cloud_controller.pmx"; string item = "Brightness-";>;
+
+static float mCloudCutoff  = lerp(lerp(0.1, 1.0, mCloudCutoffP), 0.0, mCloudCutoffM);
+static float mCloudDensity = lerp(lerp(1.0, 4.0, mCloudDensityP), 0.0, mCloudDensityM);
+static float mCloudBrightness = lerp(lerp(0.4, 2.0, mCloudBrightnessP), 0.0, mCloudBrightnessM);
+
 // ìÒéüï˚íˆéÆ ax^2 + bx + c = 0 ÇÃâÇãÅÇﬂÇÈ
 float2 SolveQuadraticEquation(float a, float b, float c, out float disc) {
 	disc = b*b - 4*a*c;
@@ -322,10 +335,8 @@ float4 Iori_PostEffectExampleVS(
 
 float OpticalDepthAt(float3 p, float interval, float sphereRadius) {
 	float u = length(p) / sphereRadius;
-	float densityLo = 0.0;
-	float densityHi = 1.0;
 	float3 hashP = 5 * p / sphereRadius;
-	float d = fbm_4(hashP) * lerp(densityHi, densityLo, u) * interval;
+	float d = (fbm_4(hashP) - mCloudCutoff) * lerp(mCloudDensity, 0, u) * interval;
 	return max(d, 0.0);
 }
 
@@ -380,11 +391,11 @@ float4 Iori_PostEffectExamplePS(
 		+ matView._11_21_31 * p.x / matProject._11
 		- matView._12_22_32 * p.y / matProject._22;
 	rayDir = normalize(rayDir);
-	float3 rayPos = CameraPosition;
+	float3 rayPos = CameraPosition - mCloudPosition;
 
 	float3 cameraDir = normalize(matView._13_23_33 / matProject._33);
 
-	float sphereRadius = 50.0;
+	float sphereRadius = mCloudRadius.x;
 
 	float3 surfacePos;
 	float alpha = CastRay(rayPos, rayDir, cameraDir, sphereRadius, surfacePos);
@@ -398,7 +409,7 @@ float4 Iori_PostEffectExamplePS(
 	// êFÇåvéZÇ∑ÇÈ
 	//float3 normal = IK_Normal(surfacePos, sphereRadius);
 	//float c = fbm_4(surfacePos) * 0.5 + 0.5;
-	float diffuse = lerp(0.5, 0.0, alpha);
+	float diffuse = lerp(mCloudBrightness, 0.0, alpha);
 	return float4(diffuse, diffuse, diffuse, 1.0 - alpha);
 }
 
