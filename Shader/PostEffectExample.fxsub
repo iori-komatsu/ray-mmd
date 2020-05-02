@@ -379,7 +379,7 @@ float OpticalDepthAt(float3 p, float interval) {
 	return max(d, 0.0);
 }
 
-float CastRay(
+float4 CastRay(
 	float3 rayPos,
 	float3 rayDir,
 	float3 cameraDir,
@@ -388,19 +388,22 @@ float CastRay(
 	bool willHit;
 	surfacePos = RayEllipsoidIntersection(rayPos, rayDir, mCloudRadius, willHit);
 	if (!willHit)  {
-		return -1;
+		return float4(-1, -1, -1, -1);
 	}
 
-	static const int N_LAYERS = 32;
+	static const int N_LAYERS = 16;
+	static const int N_LIGHT_SAMPLES = 3;
 
 	// 楕円上の点の中で最も深度が浅い点を求める
 	float3 frontDir = normalize(-cameraDir * mCloudRadius * mCloudRadius);
 	float3 frontPoint = mCloudRadius * frontDir;
 
-	float3 width = length(frontPoint) * 2;
+	float width = length(frontPoint) * 2;
 	float layerInterval = width / (N_LAYERS - 1);
 
 	float opticalDepth = 0;
+	float scattering = 0;
+	int nActiveLayers = 0;
 
 	for (int i = 0; i < N_LAYERS; i++) {
 		// レイがi番目のレイヤーとぶつかる点を求める
@@ -410,10 +413,24 @@ float CastRay(
 		// 球の内側であれば光学的深さを加算する
 		if (Ellipsoid(ithPoint, mCloudRadius) < EPSILON) {
 			opticalDepth += OpticalDepthAt(ithPoint, layerInterval);
+
+			// In-Scattering を計算する
+			float3 exitPoint = RayEllipsoidIntersection(ithPoint, -SunDirection, mCloudRadius, willHit);
+			float3 exitDist = distance(ithPoint, exitPoint);
+			float3 lightSampleInterval = exitDist / (N_LIGHT_SAMPLES + 1);
+			float lightDirOpticalDepth = 0;
+			for (int j = 0; j < N_LIGHT_SAMPLES; j++) {
+				float3 samplePoint = ithPoint + (j + 1) * lightSampleInterval * -SunDirection;
+				lightDirOpticalDepth += OpticalDepthAt(samplePoint, lightSampleInterval);
+			}
+			scattering += exp(-lightDirOpticalDepth);
+
+			nActiveLayers++;
 		}
 	}
+	scattering /= nActiveLayers;
 
-	return exp(-opticalDepth);
+	return float4(SunColor * scattering, exp(-opticalDepth));
 }
 
 float4 Iori_PostEffectExamplePS(
@@ -441,17 +458,18 @@ float4 Iori_PostEffectExamplePS(
 	float sphereRadius = mCloudRadius.x;
 
 	float3 surfacePos;
-	float alpha = CastRay(rayPos, rayDir, cameraDir, surfacePos);
+	float4 color = CastRay(rayPos, rayDir, cameraDir, surfacePos);
 
-	clip(alpha); // オブジェクトに衝突していない場合は描画しない
+	clip(color.a); // オブジェクトに衝突していない場合は描画しない
 
 	float d = distance(rayPos, surfacePos);
 	float depth = dot(cameraDir, d * rayDir);
 	clip(material.linearDepth - depth);
 
 	// 色を計算する
-	float diffuse = lerp(mCloudBrightness, 0.0, alpha);
-	return float4(diffuse, diffuse, diffuse, 1.0 - alpha);
+	//float diffuse = lerp(mCloudBrightness, 0.0, alpha);
+	//return float4(diffuse, diffuse, diffuse, 1.0 - alpha);
+	return float4(color.rgb * (1.0 - color.a), 1.0 - color.a);
 }
 
 /*
