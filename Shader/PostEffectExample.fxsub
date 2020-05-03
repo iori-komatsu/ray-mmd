@@ -373,6 +373,20 @@ float3 IK_Normal(float3 p, float r) {
 	return normalize(float3(d0 - dx, d0 - dy, d0 - dz));
 }
 
+float OpticalDepthAt(float3 p, float interval) {
+	// ノイズを生成
+	float3 hashP = 5 * p / max(mCloudRadius.x, max(mCloudRadius.y, mCloudRadius.z));
+	float r = max(fbm_4(hashP) - mCloudCutoff, 0.0);
+
+	// 中心なら0、外周部なら1
+	float u = saturate(Ellipsoid(p, mCloudRadius) + 1.0);
+
+	// ガウス分布っぽい濃度分布にする
+	float baseDensity = max(mCloudDensity * exp(-7*u*u) - 0.01, 0.0);
+
+	return r * baseDensity * interval;
+}
+
 float4 Iori_PostEffectExampleVS(
 	in float4 Position : POSITION,
 	in float4 Texcoord : TEXCOORD,
@@ -382,13 +396,6 @@ float4 Iori_PostEffectExampleVS(
 	oTexcoord0.xy += ViewportOffset;
 	oTexcoord0.zw = oTexcoord0.xy * ViewportSize;
 	return Position;
-}
-
-float OpticalDepthAt(float3 p, float interval) {
-	float u = Ellipsoid(p, mCloudRadius) + 1.0;
-	float3 hashP = 5 * p / max(mCloudRadius.x, max(mCloudRadius.y, mCloudRadius.z));
-	float d = (fbm_4(hashP) - mCloudCutoff) * lerp(mCloudDensity, 0, sqrt(u)) * interval;
-	return max(d, 0.0);
 }
 
 float LinearDepth(float3 p, float3 cameraPos, float3 cameraDir) {
@@ -431,7 +438,7 @@ float4 CastRay(
 		float depth = LinearDepth(ithPoint, rayPos, cameraDir);
 
 		// 球の内側であれば光学的深さを加算する
-		if (depth <= maxDepth && Ellipsoid(ithPoint, mCloudRadius) < EPSILON) {
+		if (depth <= maxDepth /*&& Ellipsoid(ithPoint, mCloudRadius) < EPSILON*/) {
 			opticalDepth += OpticalDepthAt(ithPoint, layerInterval);
 
 			// In-Scattering を計算する
