@@ -166,6 +166,7 @@ float fbm_4(in float3 x) {
     float s = 0.5;
     float a = 0.0;
     float b = 0.5;
+	[loop]
     for(int i=0; i<4; i++) {
         float n = noise(x);
         a += b*n;
@@ -184,6 +185,7 @@ float4 fbmd_8(in float3 x) {
     float3x3 m = float3x3(1.0,0.0,0.0,
                           0.0,1.0,0.0,
                           0.0,0.0,1.0);
+	[loop]
     for(int i=0; i<7; i++) {
         float4 n = noised(x);
         a += b*n.x;           // accumulate values		
@@ -200,6 +202,7 @@ float fbm_9(in float2 x) {
     float s = 0.55;
     float a = 0.0;
     float b = 0.5;
+	[loop]
     for(int i=0; i<9; i++) {
         float n = noise(x);
         a += b*n;
@@ -216,6 +219,7 @@ float3 fbmd_9(in float2 x) {
     float b = 0.5;
     float2   d = float2(0.0,0.0);
     float2x2 m = float2x2(1.0,0.0,0.0,1.0);
+	[loop]
     for(int i=0; i<9; i++) {
         float3 n = noised(x);
         a += b*n.x;          // accumulate values		
@@ -232,7 +236,8 @@ float fbm_4(in float2 x) {
     float s = 0.55;
     float a = 0.0;
     float b = 0.5;
-    for(int i=0; i<4; i++) {
+	[loop]
+    for(int i=0; i<3; i++) {
         float n = noise(x);
         a += b*n;
         b *= s;
@@ -375,7 +380,7 @@ float3 IK_Normal(float3 p, float r) {
 
 float OpticalDepthAt(float3 p, float interval) {
 	// ノイズを生成
-	float3 hashP = 5 * p / max(mCloudRadius.x, max(mCloudRadius.y, mCloudRadius.z));
+	float3 hashP = 5 * p / min(mCloudRadius.x, min(mCloudRadius.y, mCloudRadius.z));
 	float r = max(fbm_4(hashP) - mCloudCutoff, 0.0);
 
 	// 中心なら0、外周部なら1
@@ -416,7 +421,7 @@ float4 CastRay(
 	}
 
 	static const int N_LAYERS = 64;
-	static const int N_LIGHT_SAMPLES = 1;
+	static const int N_LIGHT_SAMPLES = 2;
 
 	// 楕円上の点の中で最も深度が浅い点を求める
 	float3 frontDir = normalize(-cameraDir * mCloudRadius * mCloudRadius);
@@ -429,7 +434,7 @@ float4 CastRay(
 	float scatteredLight = 0;
 	int nActiveLayers = 0;
 
-	[loop]
+	[fastopt]
 	for (int i = 0; i < N_LAYERS; i++) {
 		// レイがi番目のレイヤーとぶつかる点を求める
 		float3 layerPoint = frontPoint + (i * layerInterval) * cameraDir;
@@ -446,7 +451,6 @@ float4 CastRay(
 			//float3 exitDist = distance(ithPoint, exitPoint);
 			float3 lightSampleInterval = dot(mCloudRadius, float3(1, 1, 1)) * 0.1 / (N_LIGHT_SAMPLES + 1);
 			float lightDirOpticalDepth = 0;
-			[unroll]
 			for (int j = 0; j < N_LIGHT_SAMPLES; j++) {
 				float3 samplePoint = ithPoint + (j + 1) * lightSampleInterval * -SunDirection;
 				if (Ellipsoid(samplePoint, mCloudRadius) < EPSILON) {
@@ -462,7 +466,7 @@ float4 CastRay(
 	}
 	scatteredLight /= nActiveLayers;
 
-	return float4(SunColor * scatteredLight, 1.0 - exp(-opticalDepth));
+	return float4(SunColor * mCloudBrightness * scatteredLight, 1.0 - exp(-opticalDepth));
 }
 
 float4 Iori_PostEffectExamplePS(
