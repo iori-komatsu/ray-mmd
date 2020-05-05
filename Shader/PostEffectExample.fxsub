@@ -1,0 +1,99 @@
+static float SphereRadius = 30;
+
+inline float SDF(float3 p) {
+   return length(p) - SphereRadius;
+}
+
+inline float3 NormalVectorAt(float3 p) {
+    static const float EPS = 0.01;
+    float v0 = SDF(p);
+    float vx = SDF(p - float3(EPS, 0, 0));
+    float vy = SDF(p - float3(0, EPS, 0));
+    float vz = SDF(p - float3(0, 0, EPS));
+    return normalize(float3(v0 - vx, v0 - vy, v0 - vz));
+}
+
+// 点pの深度を求める。
+inline float LinearDepthAt(float3 p, float3 cameraPos, float3 cameraDir) {
+    return dot(p - cameraPos, cameraDir);
+}
+
+// cameraPos から rayDir の方向にレイを飛ばし、オブジェクトの表面に衝突する点を求める。
+// 衝突する場合、cameraPos から衝突点までの距離を返す。
+// 衝突しない場合は -1 を返す。
+float CastRay(float3 rayDir, float3 cameraPos, float3 cameraDir, float maxDepth) {
+    static const int N_STEPS = 100;
+    static const float EPS = 0.01;
+    float d = 0;
+
+    [fastopt]
+    for (int i = 0; i < N_STEPS; i++) {
+        float3 p = cameraPos + d * rayDir;
+        if (LinearDepthAt(p, cameraPos, cameraDir) > maxDepth) {
+            return -1;
+        }
+        float dist = SDF(p);
+        if (dist < EPS) {
+            return d + dist;
+        }
+        d += dist;
+    }
+
+    return -1;
+}
+
+// 物体の表面の色を計算する。
+float3 CalculateSurfaceColor(float3 surfacePos, float3 cameraPos) {
+    static const float3 BASE_COLOR = float3(0.0, 0.43, 0.33);
+    static const float3 AMBIENT_COLOR = BASE_COLOR * 0.1;
+    static const float  SHININESS = 30;
+
+    float3 normal = NormalVectorAt(surfacePos);
+
+    // 拡散光
+    float  dotLN = saturate(dot(-SunDirection, normal));
+    float3 diffuse = dotLN * BASE_COLOR / PI;
+
+    // 鏡面反射光
+    float3 viewDir = normalize(cameraPos - surfacePos);
+    float3 reflectDir = -reflect(-SunDirection, normal);
+    float  dotRV = saturate(dot(reflectDir, viewDir));
+    float3 specular = pow(dotRV, SHININESS);
+
+    return (AMBIENT_COLOR + diffuse + specular) * SunColor;
+}
+
+// World空間におけるカメラとレイの位置や向きを求める。
+// レイの向きは現在描画中のピクセルの方向を指していて、
+// カメラの向きは現在描画中のピクセルとは関係なく画面の中央を指している。
+void SetupCameraAndRay(float2 coord, out float3 oCameraPos, out float3 oCameraDir, out float3 oRayDir) {
+    float2 p = (coord.xy - 0.5) * 2.0;
+    oCameraPos = CameraPosition;
+    oCameraDir = normalize(matView._13_23_33 / matProject._33);
+    oRayDir = normalize(
+          matView._13_23_33 / matProject._33
+        + matView._11_21_31 * p.x / matProject._11
+        - matView._12_22_32 * p.y / matProject._22
+    );
+}
+
+float4 PostEffectExamplePS(in float4 coord : TEXCOORD0) : COLOR
+{
+    float4 MRT0 = tex2Dlod(Gbuffer5Map, float4(coord.xy, 0, 0));
+    float4 MRT1 = tex2Dlod(Gbuffer6Map, float4(coord.xy, 0, 0));
+    float4 MRT2 = tex2Dlod(Gbuffer7Map, float4(coord.xy, 0, 0));
+    float4 MRT3 = tex2Dlod(Gbuffer8Map, float4(coord.xy, 0, 0));
+
+    MaterialParam material;
+    DecodeGbuffer(MRT0, MRT1, MRT2, MRT3, material);
+
+    float3 cameraPos, cameraDir, rayDir;
+    SetupCameraAndRay(coord.xy, cameraPos, cameraDir, rayDir);
+
+    float d = CastRay(rayDir, cameraPos, cameraDir, material.linearDepth);
+
+    clip(d); // 物体に衝突しなかった場合、このピクセルは捨てる
+
+    float3 color = CalculateSurfaceColor(cameraPos + d * rayDir, cameraPos);
+    return float4(color, 1);
+}
