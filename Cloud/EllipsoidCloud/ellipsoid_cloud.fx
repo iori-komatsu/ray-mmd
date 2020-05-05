@@ -98,7 +98,7 @@ float mCloudDensityM : CONTROLOBJECT<string name = "(self)"; string item = "Dens
 float mCloudBrightnessP : CONTROLOBJECT<string name = "(self)"; string item = "Brightness+";>;
 float mCloudBrightnessM : CONTROLOBJECT<string name = "(self)"; string item = "Brightness-";>;
 
-static float mCloudCutoff  = lerp(lerp(0.1, 1.0, mCloudCutoffP), 0.0, mCloudCutoffM);
+static float mCloudCutoff  = lerp(lerp(0.5, 1.0, mCloudCutoffP), 0.0, mCloudCutoffM);
 static float mCloudDensity = lerp(lerp(0.2, 1.0, mCloudDensityP), 0.0, mCloudDensityM);
 static float mCloudBrightness = lerp(lerp(0.4, 2.0, mCloudBrightnessP), 0.0, mCloudBrightnessM);
 
@@ -149,7 +149,8 @@ float Ellipsoid(float3 p, float3 radius) {
 float OpticalDepthAt(float3 p, float interval) {
 	// ノイズを生成
 	float3 hashP = 5 * p / min(mCloudRadius.x, min(mCloudRadius.y, mCloudRadius.z));
-	float r = max(fbm_4(hashP) - mCloudCutoff, 0.0);
+	float hashValue = fbm_4(hashP) * 0.5 + 0.5;
+	float r = saturate((hashValue - mCloudCutoff) / (1.0 - mCloudCutoff));
 
 	// 中心なら0、外周部なら1
 	float u = saturate(Ellipsoid(p, mCloudRadius) + 1.0);
@@ -164,6 +165,9 @@ float LinearDepth(float3 p, float3 cameraPos, float3 cameraDir) {
 	return dot(p - cameraPos, cameraDir);
 }
 
+// cameraPos から rayDir の方向にレイを飛ばし、雲の拡散光と光学的深さを求める。
+// 戻り値の rgb 成分は拡散光を表し、a成分は光学的深さを表す。
+// レイが雲に衝突しない場合は (-1, -1, -1, -1) を返す。
 float4 CastRay(
 	float3 cameraPos,
 	float3 rayDir,
@@ -220,7 +224,7 @@ float4 CastRay(
 	}
 	scatteredLight /= nActiveLayers;
 
-	return float4(SunColor * mCloudBrightness * scatteredLight, 1.0 - exp(-opticalDepth));
+	return float4(SunColor * mCloudBrightness * scatteredLight, opticalDepth);
 }
 
 // World空間におけるカメラとレイの位置や向きを求める。
@@ -267,7 +271,7 @@ float4 EllipsoidCloudPS(in float4 coord : TEXCOORD0) : COLOR
 
 	clip(color.a); // オブジェクトに衝突していない場合は描画しない
 
-	return float4(color.rgb * color.a, color.a);
+	return float4(color.rgb * (1.0 - exp(-color.a)), color.a);
 }
 
 #define OBJECT_TEC(name, mmdpass) \
@@ -275,7 +279,7 @@ float4 EllipsoidCloudPS(in float4 coord : TEXCOORD0) : COLOR
 		pass DrawObject {\
 			ZEnable = false; ZWriteEnable = false;\
 			AlphaBlendEnable = TRUE; AlphaTestEnable = FALSE;\
-			SrcBlend = ONE; DestBlend = INVSRCALPHA;\
+			SrcBlend = ONE; DestBlend = ONE;\
 			CullMode = NONE;\
 			VertexShader = compile vs_3_0 EllipsoidCloudVS();\
 			PixelShader  = compile ps_3_0 EllipsoidCloudPS();\

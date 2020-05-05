@@ -1,4 +1,7 @@
 float4 RenderCloudsPS(in float4 coord : TEXCOORD0) : COLOR
 {
-	return tex2Dlod(CloudMapSamp, float4(coord.xy, 0, 0));
+	float4 c = tex2Dlod(CloudMapSamp, float4(coord.xy, 0, 0));
+	float3 scatteredLight = c.rgb;
+	float  opticalDepth = c.a;
+	return float4(scatteredLight, 1.0 - exp(-opticalDepth));
 }
