@@ -1,0 +1,4 @@
+float4 RenderCloudsPS(in float4 coord : TEXCOORD0) : COLOR
+{
+	return tex2Dlod(CloudMapSamp, float4(coord.xy, 0, 0));
+}

@@ -108,8 +108,8 @@ static float3 mColorBalanceM = float3(mColBalanceRM, mColBalanceGM, mColBalanceB
 #	include "shader/PostProcessSSR.fxsub"
 #endif
 
-#if IORI_POST_EFFECT_EXAMPLE
-#   include "shader/PostEffectExample.fxsub"
+#if CLOUD_ENABLE
+#   include "shader/Cloud.fxsub"
 #endif
 
 #if BOKEH_QUALITY
@@ -258,12 +258,11 @@ technique DeferredLighting<
 	"RenderColorTarget=ShadingMap;		  Pass=SSRFinalCombie;"
 #endif
 
-#if IORI_POST_EFFECT_EXAMPLE
+#if CLOUD_ENABLE
 	"RenderColorTarget=ShadingMap;"
-	"Pass=ComputePostEffectExample;"
+	"Pass=RenderClouds;"
 #endif
 
-#if 1
 #if BOKEH_QUALITY
 	"RenderColorTarget0=AutoFocalMap; Pass=ComputeFocalDistance;"
 
@@ -379,7 +378,6 @@ technique DeferredLighting<
 	"RenderDepthStencilTarget=;"
 	"Pass=SMAANeighborhoodBlendingFinal;"
 #endif
-#endif // if 0
 ;>
 {
 #if SUN_LIGHT_ENABLE && SUN_SHADOW_QUALITY
@@ -578,13 +576,13 @@ technique DeferredLighting<
 		PixelShader  = compile ps_3_0 SSRFinalCombiePS();
 	}
 #endif
-#if IORI_POST_EFFECT_EXAMPLE
-	pass ComputePostEffectExample<string Script= "Draw=Buffer;";>{
+#if CLOUD_ENABLE
+	pass RenderClouds<string Script= "Draw=Buffer;";>{
 		AlphaBlendEnable = true; AlphaTestEnable = false;
 		ZEnable = false; ZWriteEnable = false;
 		SrcBlend = ONE; DestBlend = INVSRCALPHA;
-		VertexShader = compile vs_3_0 Iori_PostEffectExampleVS();
-		PixelShader  = compile ps_3_0 Iori_PostEffectExamplePS(ShadingMapPointSamp);
+		VertexShader = compile vs_3_0 ScreenSpaceQuadVS();
+		PixelShader  = compile ps_3_0 RenderCloudsPS();
 	}
 #endif
 #if BOKEH_QUALITY
