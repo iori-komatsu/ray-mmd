@@ -72,7 +72,7 @@ float OpticalDepthAt(float3 p, float interval) {
 	// ノイズを生成
 	float3 hashP = 5 * p / mPatternScale.x;
 	float hashValue = fbm_4(hashP) * 0.5 + 0.5;
-	float r = saturate((hashValue - mCloudCutoff) / (1.0 - mCloudCutoff));
+	float r = saturate(hashValue - mCloudCutoff);
 
 	// 中心なら0、外周部なら1
 	float u = saturate(Ellipsoid(p, mCloudSize) + 1.0);
@@ -104,7 +104,7 @@ float4 CastRay(
 		return float4(-1, -1, -1, -1);
 	}
 
-	static const int N_LAYERS = 32;
+	static const int N_LAYERS = 100;
 	static const int N_LIGHT_SAMPLES = 1;
 
 	// 楕円上の点の中で最も深度が浅い点を求める
