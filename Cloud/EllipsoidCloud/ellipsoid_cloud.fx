@@ -4,7 +4,7 @@
 #include "../../shader/gbuffer_sampler.fxsub"
 #include "../noise.fxsub"
 
-float3 mCloudPosition   : CONTROLOBJECT<string name = "(self)"; string item = "Position";>;
+float4x4 mCloudWorld    : CONTROLOBJECT<string name = "(self)"; string item = "Position";>;
 float3 mCloudSize       : CONTROLOBJECT<string name = "(self)"; string item = "Size";>;
 float3 mPatternScale    : CONTROLOBJECT<string name = "(self)"; string item = "PatternScale";>;
 float mCloudCutoffP     : CONTROLOBJECT<string name = "(self)"; string item = "Cutoff+";>;
@@ -152,13 +152,20 @@ float4 CastRay(
 // カメラの向きは現在描画中のピクセルとは関係なく画面の中央を指している。
 void SetupCameraAndRay(float2 coord, out float3 oCameraPos, out float3 oCameraDir, out float3 oRayDir) {
 	float2 p = (coord.xy - 0.5) * 2.0;
-	oCameraPos = CameraPosition - mCloudPosition;
+	float3x3 rotM = float3x3(mCloudWorld._11_12_13, mCloudWorld._21_22_23, mCloudWorld._31_32_33);
+
+	oCameraPos = CameraPosition - mCloudWorld._41_42_43;
+	oCameraPos = mul(rotM, oCameraPos);
+
 	oCameraDir = normalize(matView._13_23_33 / matProject._33);
+	oCameraDir = mul(rotM, oCameraDir);
+
 	oRayDir = normalize(
 		  matView._13_23_33 / matProject._33
 		+ matView._11_21_31 * p.x / matProject._11
 		- matView._12_22_32 * p.y / matProject._22
 	);
+	oRayDir = mul(rotM, oRayDir);
 }
 
 float4 EllipsoidCloudVS(
