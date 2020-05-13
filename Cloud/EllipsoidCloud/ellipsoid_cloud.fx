@@ -2,105 +2,25 @@
 #include "../../shader/math.fxsub"
 #include "../../shader/gbuffer.fxsub"
 #include "../../shader/gbuffer_sampler.fxsub"
+#include "../noise.fxsub"
 
-////////////////////////////////////////////////////////////////////////////////////////////
-
-// Code from by inigo quilez - iq/2016
-// License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
-// https://www.shadertoy.com/view/4ttSWf
-
-//==========================================================================================
-// hashes
-//==========================================================================================
-
-float hash1(float2 p) {
-    p  = 50.0*frac( p*0.3183099 );
-    return frac( p.x*p.y*(p.x+p.y) );
-}
-
-float hash1(float n) {
-    return frac( n*17.0*frac( n*0.3183099 ) );
-}
-
-//==========================================================================================
-// noises
-//==========================================================================================
-
-float noise( in float3 x )
-{
-    float3 p = floor(x);
-    float3 w = frac(x);
-    
-    float3 u = w*w*w*(w*(w*6.0-15.0)+10.0);
-    
-    float n = p.x + 317.0*p.y + 157.0*p.z;
-    
-    float a = hash1(n+0.0);
-    float b = hash1(n+1.0);
-    float c = hash1(n+317.0);
-    float d = hash1(n+318.0);
-    float e = hash1(n+157.0);
-	float f = hash1(n+158.0);
-    float g = hash1(n+474.0);
-    float h = hash1(n+475.0);
-
-    float k0 =   a;
-    float k1 =   b - a;
-    float k2 =   c - a;
-    float k3 =   e - a;
-    float k4 =   a - b - c + d;
-    float k5 =   a - c - e + g;
-    float k6 =   a - b - e + f;
-    float k7 = - a + b + c - d + e - f - g + h;
-
-    return -1.0+2.0*(k0 + k1*u.x + k2*u.y + k3*u.z + k4*u.x*u.y + k5*u.y*u.z + k6*u.z*u.x + k7*u.x*u.y*u.z);
-}
-
-//==========================================================================================
-// fbm constructions
-//==========================================================================================
-
-const float3x3 m3  = float3x3( 0.00,  0.80,  0.60,
-                              -0.80,  0.36, -0.48,
-                              -0.60, -0.48,  0.64 );
-const float3x3 m3i = float3x3( 0.00, -0.80, -0.60,
-                               0.80,  0.36, -0.48,
-                               0.60, -0.48,  0.64 );
-const float2x2 m2 = float2x2(  0.80,  0.60,
-                              -0.60,  0.80 );
-const float2x2 m2i = float2x2( 0.80, -0.60,
-                               0.60,  0.80 );
-
-//------------------------------------------------------------------------------------------
-
-float fbm_4(in float3 x) {
-    float f = 2.0;
-    float s = 0.5;
-    float a = 0.0;
-    float b = 0.5;
-    for(int i=0; i<4; i++) {
-        float n = noise(x);
-        a += b*n;
-        b *= s;
-        x = f*mul(m3, x);
-    }
-	return a;
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////
-
-float3 mCloudPosition : CONTROLOBJECT<string name = "(self)"; string item = "Position";>;
-float3 mCloudRadius   : CONTROLOBJECT<string name = "(self)"; string item = "Radius";>;
-float mCloudCutoffP  : CONTROLOBJECT<string name = "(self)"; string item = "Cutoff+";>;
-float mCloudCutoffM  : CONTROLOBJECT<string name = "(self)"; string item = "Cutoff-";>;
-float mCloudDensityP : CONTROLOBJECT<string name = "(self)"; string item = "Density+";>;
-float mCloudDensityM : CONTROLOBJECT<string name = "(self)"; string item = "Density-";>;
+float3 mCloudPosition   : CONTROLOBJECT<string name = "(self)"; string item = "Position";>;
+float3 mCloudSize       : CONTROLOBJECT<string name = "(self)"; string item = "Size";>;
+float3 mPatternScale    : CONTROLOBJECT<string name = "(self)"; string item = "PatternScale";>;
+float mCloudCutoffP     : CONTROLOBJECT<string name = "(self)"; string item = "Cutoff+";>;
+float mCloudCutoffM     : CONTROLOBJECT<string name = "(self)"; string item = "Cutoff-";>;
+float mCloudDensityP    : CONTROLOBJECT<string name = "(self)"; string item = "Density+";>;
+float mCloudDensityM    : CONTROLOBJECT<string name = "(self)"; string item = "Density-";>;
 float mCloudBrightnessP : CONTROLOBJECT<string name = "(self)"; string item = "Brightness+";>;
 float mCloudBrightnessM : CONTROLOBJECT<string name = "(self)"; string item = "Brightness-";>;
+float mCloudHue         : CONTROLOBJECT<string name = "(self)"; string item = "H+";>;
+float mCloudSaturation  : CONTROLOBJECT<string name = "(self)"; string item = "S+";>;
+float mCloudValueM      : CONTROLOBJECT<string name = "(self)"; string item = "V-";>;
 
 static float mCloudCutoff  = lerp(lerp(0.5, 1.0, mCloudCutoffP), 0.0, mCloudCutoffM);
 static float mCloudDensity = lerp(lerp(0.2, 1.0, mCloudDensityP), 0.0, mCloudDensityM);
 static float mCloudBrightness = lerp(lerp(0.4, 2.0, mCloudBrightnessP), 0.0, mCloudBrightnessM);
+static float mCloudValue = 1.0 - mCloudValueM;
 
 // 二次方程式 ax^2 + 2bx + c = 0 の解を求める。一次の係数が 2b であることに注意。
 inline float2 SolveQuadraticEquation2B(float a, float b, float c, out float disc) {
@@ -148,12 +68,12 @@ float Ellipsoid(float3 p, float3 radius) {
 
 float OpticalDepthAt(float3 p, float interval) {
 	// ノイズを生成
-	float3 hashP = 5 * p / min(mCloudRadius.x, min(mCloudRadius.y, mCloudRadius.z));
+	float3 hashP = 5 * p / mPatternScale.x;
 	float hashValue = fbm_4(hashP) * 0.5 + 0.5;
 	float r = saturate((hashValue - mCloudCutoff) / (1.0 - mCloudCutoff));
 
 	// 中心なら0、外周部なら1
-	float u = saturate(Ellipsoid(p, mCloudRadius) + 1.0);
+	float u = saturate(Ellipsoid(p, mCloudSize) + 1.0);
 
 	// ガウス分布っぽい濃度分布にする
 	float baseDensity = max(mCloudDensity * exp(-7*u*u) - 0.01, 0.0);
@@ -175,7 +95,7 @@ float4 CastRay(
 	float  maxDepth
 ) {
 	bool willHit;
-	RayEllipsoidIntersection(cameraPos, rayDir, mCloudRadius, willHit);
+	RayEllipsoidIntersection(cameraPos, rayDir, mCloudSize, willHit);
 	if (!willHit)  {
 		return float4(-1, -1, -1, -1);
 	}
@@ -184,8 +104,8 @@ float4 CastRay(
 	static const int N_LIGHT_SAMPLES = 2;
 
 	// 楕円上の点の中で最も深度が浅い点を求める
-	float3 frontDir = normalize(-cameraDir * mCloudRadius * mCloudRadius);
-	float3 frontPoint = mCloudRadius * frontDir;
+	float3 frontDir = normalize(-cameraDir * mCloudSize * mCloudSize);
+	float3 frontPoint = mCloudSize * frontDir;
 
 	float width = length(frontPoint) * 2;
 	float layerInterval = width / (N_LAYERS - 1);
@@ -207,11 +127,11 @@ float4 CastRay(
 			opticalDepth += OpticalDepthAt(ithPoint, layerInterval);
 
 			// In-Scattering を計算する
-			float lightSampleInterval = dot(mCloudRadius, float3(1, 1, 1)) * 0.1 / (N_LIGHT_SAMPLES + 1);
+			float lightSampleInterval = dot(mCloudSize, float3(1, 1, 1)) * 0.1 / (N_LIGHT_SAMPLES + 1);
 			float lightDirOpticalDepth = 0;
 			for (int j = 0; j < N_LIGHT_SAMPLES; j++) {
 				float3 samplePoint = ithPoint + (j + 1) * lightSampleInterval * -SunDirection;
-				if (Ellipsoid(samplePoint, mCloudRadius) < EPSILON) {
+				if (Ellipsoid(samplePoint, mCloudSize) < EPSILON) {
 					lightDirOpticalDepth += OpticalDepthAt(samplePoint, lightSampleInterval);
 				}
 			}
@@ -224,7 +144,7 @@ float4 CastRay(
 	}
 	scatteredLight /= nActiveLayers;
 
-	return float4(SunColor * mCloudBrightness * scatteredLight, opticalDepth);
+	return float4(scatteredLight, scatteredLight, scatteredLight, opticalDepth);
 }
 
 // World空間におけるカメラとレイの位置や向きを求める。
@@ -267,11 +187,16 @@ float4 EllipsoidCloudPS(in float4 coord : TEXCOORD0) : COLOR
 	float3 cameraPos, cameraDir, rayDir;
 	SetupCameraAndRay(coord.xy, cameraPos, cameraDir, rayDir);
 
-	float4 color = CastRay(cameraPos, rayDir, cameraDir, material.linearDepth);
+	float4 baseColor = CastRay(cameraPos, rayDir, cameraDir, material.linearDepth);
 
-	clip(color.a); // オブジェクトに衝突していない場合は描画しない
+	clip(baseColor.a); // オブジェクトに衝突していない場合は描画しない
 
-	return float4(color.rgb * (1.0 - exp(-color.a)), color.a);
+	float3 color = baseColor
+		* mCloudBrightness
+		* hsv2rgb(float3(mCloudHue, mCloudSaturation, mCloudValue))
+		* SunColor;
+
+	return float4(color * (1.0 - exp(-baseColor.a)), baseColor.a);
 }
 
 #define OBJECT_TEC(name, mmdpass) \
