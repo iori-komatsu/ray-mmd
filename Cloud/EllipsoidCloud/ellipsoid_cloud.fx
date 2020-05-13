@@ -15,12 +15,13 @@ float mCloudBrightnessP : CONTROLOBJECT<string name = "(self)"; string item = "B
 float mCloudBrightnessM : CONTROLOBJECT<string name = "(self)"; string item = "Brightness-";>;
 float mCloudHue         : CONTROLOBJECT<string name = "(self)"; string item = "H+";>;
 float mCloudSaturation  : CONTROLOBJECT<string name = "(self)"; string item = "S+";>;
+float mCloudValueP      : CONTROLOBJECT<string name = "(self)"; string item = "V+";>;
 float mCloudValueM      : CONTROLOBJECT<string name = "(self)"; string item = "V-";>;
 
 static float mCloudCutoff  = lerp(lerp(0.5, 1.0, mCloudCutoffP), 0.0, mCloudCutoffM);
 static float mCloudDensity = lerp(lerp(0.3, 1.0, mCloudDensityP), 0.0, mCloudDensityM);
-static float mCloudBrightness = lerp(lerp(2.0, 6.0, mCloudBrightnessP), 0.0, mCloudBrightnessM);
-static float mCloudValue = 1.0 - mCloudValueM;
+static float mCloudBrightness = lerp(lerp(1.0, 4.0, mCloudBrightnessP), 0.25, mCloudBrightnessM);
+static float mCloudValue = lerp(lerp(1.0, 4.0, mCloudValueP), 0.0, mCloudValueM);
 static float mCloudAmbient = float3(1, 1, 1) * 0.025;
 
 // 二次方程式 ax^2 + 2bx + c = 0 の解を求める。一次の係数が 2b であることに注意。
@@ -87,41 +88,6 @@ inline float LinearDepth(float3 p, float3 cameraPos, float3 cameraDir) {
 	return dot(p - cameraPos, cameraDir);
 }
 
-// 深度１の地点におけるスクリーンのサイズをWorld空間の尺度で返す
-inline float2 WorldSpaceScreenSize() {
-	float3 center = normalize(matView._13_23_33 / matProject._33);
-	float3 x = normalize(
-		  matView._13_23_33 / matProject._33
-		+ matView._11_21_31 / matProject._11
-	);
-	float3 y = normalize(
-		  matView._13_23_33 / matProject._33
-		- matView._12_22_32 / matProject._22
-	);
-	float2 d = float2(dot(x, center), dot(y, center));
-	return 2 * sqrt(1 / (d*d) - 1);
-}
-
-// 深度１の地点におけるピクセルサイズをWorld空間の尺度で返す
-inline float2 WorldSpacePixelSize() {
-	return WorldSpaceScreenSize() / ViewportSize;
-}
-
-// 深度１において入射してくる太陽光の量
-float AmountOfIncidentLight(float layerInterval, float2 pixelSize, float3 rayDir, float3 xDir, float3 yDir, float3 sunDir) {
-	//float2 area = (2*pixelSize.xy + layerInterval) * layerInterval * sqrt(1 + pixelSize.yx*pixelSize.yx);
-	float areaH = pixelSize.x * layerInterval;
-	float areaV = pixelSize.y * layerInterval;
-
-	float3 normalH = normalize(cross(rayDir, xDir));
-	float3 normalV = normalize(cross(rayDir, yDir));
-
-	float lightH = saturate(max(dot(normalH, -sunDir), dot(-normalH, -sunDir))) * areaH;
-	float lightV = saturate(max(dot(normalV, -sunDir), dot(-normalV, -sunDir))) * areaV;
-
-	return lightH + lightV;
-}
-
 // cameraPos から rayDir の方向にレイを飛ばし、雲の拡散光と光学的深さを求める。
 // 戻り値の rgb 成分は拡散光を表し、a成分は光学的深さを表す。
 // レイが雲に衝突しない場合は (-1, -1, -1, -1) を返す。
@@ -138,8 +104,8 @@ float4 CastRay(
 		return float4(-1, -1, -1, -1);
 	}
 
-	static const int N_LAYERS = 64;
-	static const int N_LIGHT_SAMPLES = 2;
+	static const int N_LAYERS = 32;
+	static const int N_LIGHT_SAMPLES = 1;
 
 	// 楕円上の点の中で最も深度が浅い点を求める
 	float3 frontDir = normalize(-cameraDir * mCloudSize * mCloudSize);
@@ -148,14 +114,8 @@ float4 CastRay(
 	float width = length(frontPoint) * 2;
 	float layerInterval = width / (N_LAYERS - 1);
 
-	float2 pixelSize = WorldSpacePixelSize();
-	float3 xDir = normalize(ddx(rayDir));
-	float3 yDir = normalize(ddy(rayDir));
-	float incidentLight = 0.01;//AmountOfIncidentLight(layerInterval, pixelSize, rayDir, xDir, yDir, sunDir);
-
 	float opticalDepth = 0;
 	float scatteredLight = 0;
-	int nActiveLayers = 0;
 
 	[fastopt]
 	for (int i = 0; i < N_LAYERS; i++) {
@@ -172,20 +132,22 @@ float4 CastRay(
 			// In-Scattering を計算する
 			float lightSampleInterval = dot(mCloudSize, float3(1, 1, 1)) * 0.1 / (N_LIGHT_SAMPLES + 1);
 			float lightDirOpticalDepth = 0;
+
+			[unroll]
 			for (int j = 0; j < N_LIGHT_SAMPLES; j++) {
 				float3 samplePoint = ithPoint + (j + 1) * lightSampleInterval * -sunDir;
 				if (Ellipsoid(samplePoint, mCloudSize) < EPSILON) {
 					lightDirOpticalDepth += OpticalDepthAt(samplePoint, lightSampleInterval);
 				}
 			}
-			lightDirOpticalDepth *= (N_LIGHT_SAMPLES + 1.0) / N_LIGHT_SAMPLES;
 
-			// ithPoint に入射する光の量が incidentLight * exp(-lightDirOpticalDepth) で、
+			// ithPoint に入射する光の量が exp(-lightDirOpticalDepth) で、
 			// ithPoint から cameraPos まで届く光がその exp(-opticalDepth) 倍になる
-			scatteredLight += incidentLight * exp(-lightDirOpticalDepth-opticalDepth);
+			scatteredLight += exp(-lightDirOpticalDepth-opticalDepth);
 		}
 	}
 
+	scatteredLight /= N_LAYERS;
 	return float4(scatteredLight, scatteredLight, scatteredLight, opticalDepth);
 }
 
@@ -249,8 +211,7 @@ float4 EllipsoidCloudPS(in float4 coord : TEXCOORD0) : COLOR
 	clip(baseColor.a); // オブジェクトに衝突していない場合は描画しない
 
 	float3 color =
-		baseColor
-		* mCloudBrightness
+		pow(baseColor, 1 / mCloudBrightness)
 		* hsv2rgb(float3(mCloudHue, mCloudSaturation, mCloudValue))
 		* SunColor
 		+ mCloudAmbient;
