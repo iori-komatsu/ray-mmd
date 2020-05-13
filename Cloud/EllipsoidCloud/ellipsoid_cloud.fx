@@ -56,13 +56,13 @@ float3 RayEllipsoidIntersection(float3 cameraPos, float3 rayDir, float3 radius, 
 }
 
 // ÉåÉCÇ∆ïΩñ Ç∆åì_ÇãÅÇﬂÇÈ
-float3 RayPlaneIntersection(float3 cameraPos, float3 rayDir, float3 planePoint, float3 planeNormal) {
+inline float3 RayPlaneIntersection(float3 cameraPos, float3 rayDir, float3 planePoint, float3 planeNormal) {
 	float denom = dot(rayDir, planeNormal);
 	float t = dot(planePoint - cameraPos, planeNormal) / denom;
 	return cameraPos + t*rayDir;
 }
 
-float Ellipsoid(float3 p, float3 radius) {
+inline float Ellipsoid(float3 p, float3 radius) {
 	return dot(p / radius, p / radius) - 1.0;
 }
 
@@ -81,7 +81,7 @@ float OpticalDepthAt(float3 p, float interval) {
 	return r * baseDensity * interval;
 }
 
-float LinearDepth(float3 p, float3 cameraPos, float3 cameraDir) {
+inline float LinearDepth(float3 p, float3 cameraPos, float3 cameraDir) {
 	return dot(p - cameraPos, cameraDir);
 }
 
