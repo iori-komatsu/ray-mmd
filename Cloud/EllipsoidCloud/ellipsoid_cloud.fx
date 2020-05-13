@@ -92,6 +92,7 @@ float4 CastRay(
 	float3 cameraPos,
 	float3 rayDir,
 	float3 cameraDir,
+	float3 sunDir,
 	float  maxDepth
 ) {
 	bool willHit;
@@ -130,7 +131,7 @@ float4 CastRay(
 			float lightSampleInterval = dot(mCloudSize, float3(1, 1, 1)) * 0.1 / (N_LIGHT_SAMPLES + 1);
 			float lightDirOpticalDepth = 0;
 			for (int j = 0; j < N_LIGHT_SAMPLES; j++) {
-				float3 samplePoint = ithPoint + (j + 1) * lightSampleInterval * -SunDirection;
+				float3 samplePoint = ithPoint + (j + 1) * lightSampleInterval * -sunDir;
 				if (Ellipsoid(samplePoint, mCloudSize) < EPSILON) {
 					lightDirOpticalDepth += OpticalDepthAt(samplePoint, lightSampleInterval);
 				}
@@ -150,7 +151,13 @@ float4 CastRay(
 // World空間におけるカメラとレイの位置や向きを求める。
 // レイの向きは現在描画中のピクセルの方向を指していて、
 // カメラの向きは現在描画中のピクセルとは関係なく画面の中央を指している。
-void SetupCameraAndRay(float2 coord, out float3 oCameraPos, out float3 oCameraDir, out float3 oRayDir) {
+void SetupCameraAndRay(
+	float2 coord,
+	out float3 oCameraPos,
+	out float3 oCameraDir,
+	out float3 oRayDir,
+	out float3 oSunDir
+) {
 	float2 p = (coord.xy - 0.5) * 2.0;
 	float3x3 rotM = float3x3(mCloudWorld._11_12_13, mCloudWorld._21_22_23, mCloudWorld._31_32_33);
 
@@ -166,6 +173,8 @@ void SetupCameraAndRay(float2 coord, out float3 oCameraPos, out float3 oCameraDi
 		- matView._12_22_32 * p.y / matProject._22
 	);
 	oRayDir = mul(rotM, oRayDir);
+
+	oSunDir = mul(rotM, SunDirection);
 }
 
 float4 EllipsoidCloudVS(
@@ -191,10 +200,10 @@ float4 EllipsoidCloudPS(in float4 coord : TEXCOORD0) : COLOR
 	MaterialParam material;
 	DecodeGbuffer(MRT0, MRT1, MRT2, MRT3, material);
 
-	float3 cameraPos, cameraDir, rayDir;
-	SetupCameraAndRay(coord.xy, cameraPos, cameraDir, rayDir);
+	float3 cameraPos, cameraDir, rayDir, sunDir;
+	SetupCameraAndRay(coord.xy, cameraPos, cameraDir, rayDir, sunDir);
 
-	float4 baseColor = CastRay(cameraPos, rayDir, cameraDir, material.linearDepth);
+	float4 baseColor = CastRay(cameraPos, rayDir, cameraDir, sunDir, material.linearDepth);
 
 	clip(baseColor.a); // オブジェクトに衝突していない場合は描画しない
 
