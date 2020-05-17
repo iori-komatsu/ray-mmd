@@ -51,7 +51,7 @@ texture CloudMap: OFFSCREENRENDERTARGET<
 	float4 ClearColor = { 0, 0, 0, 0 };
 	float ClearDepth = 1.0;
 	string DefaultEffect =
-		"EllipsoidCloud*.*= ./Cloud/EllipsoidCloud/ellipsoid_cloud.fx;"
+		"VolumeticCloud*.*= ./Cloud/VolumeticCloud/volumetic_cloud.fx;"
 		"* = hide;";
 >;
 sampler CloudMapSamp = sampler_state {
