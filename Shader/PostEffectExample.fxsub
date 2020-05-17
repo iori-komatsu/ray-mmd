@@ -1,0 +1,584 @@
+////////////////////////////////////////////////////////////////////////////////////////////
+
+// Code from by inigo quilez - iq/2016
+// License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
+// https://www.shadertoy.com/view/4ttSWf
+
+//==========================================================================================
+// hashes
+//==========================================================================================
+
+float hash1(float2 p) {
+    p  = 50.0*frac( p*0.3183099 );
+    return frac( p.x*p.y*(p.x+p.y) );
+}
+
+float hash1(float n) {
+    return frac( n*17.0*frac( n*0.3183099 ) );
+}
+
+float2 hash2(float n) {
+	return frac(sin(float2(n,n+1.0))*float2(43758.5453123,22578.1459123));
+}
+
+
+float2 hash2(float2 p) {
+    const float2 k = float2(0.3183099, 0.3678794);
+    p = p*k + k.yx;
+    return frac( 16.0 * k*frac( p.x*p.y*(p.x+p.y)) );
+}
+
+//==========================================================================================
+// noises
+//==========================================================================================
+
+// value noise, and its analytical derivatives
+float4 noised(in float3 x) {
+    float3 p = floor(x);
+    float3 w = frac(x);
+    
+    float3 u = w*w*w*(w*(w*6.0-15.0)+10.0);
+    float3 du = 30.0*w*w*(w*(w-2.0)+1.0);
+
+    float n = p.x + 317.0*p.y + 157.0*p.z;
+    
+    float a = hash1(n+0.0);
+    float b = hash1(n+1.0);
+    float c = hash1(n+317.0);
+    float d = hash1(n+318.0);
+    float e = hash1(n+157.0);
+	float f = hash1(n+158.0);
+    float g = hash1(n+474.0);
+    float h = hash1(n+475.0);
+
+    float k0 =   a;
+    float k1 =   b - a;
+    float k2 =   c - a;
+    float k3 =   e - a;
+    float k4 =   a - b - c + d;
+    float k5 =   a - c - e + g;
+    float k6 =   a - b - e + f;
+    float k7 = - a + b + c - d + e - f - g + h;
+
+    return float4( -1.0+2.0*(k0 + k1*u.x + k2*u.y + k3*u.z + k4*u.x*u.y + k5*u.y*u.z + k6*u.z*u.x + k7*u.x*u.y*u.z), 
+                        2.0* du * float3( k1 + k4*u.y + k6*u.z + k7*u.y*u.z,
+                                          k2 + k5*u.z + k4*u.x + k7*u.z*u.x,
+                                          k3 + k6*u.x + k5*u.y + k7*u.x*u.y ) );
+}
+
+float noise( in float3 x )
+{
+    float3 p = floor(x);
+    float3 w = frac(x);
+    
+    float3 u = w*w*w*(w*(w*6.0-15.0)+10.0);
+    
+    float n = p.x + 317.0*p.y + 157.0*p.z;
+    
+    float a = hash1(n+0.0);
+    float b = hash1(n+1.0);
+    float c = hash1(n+317.0);
+    float d = hash1(n+318.0);
+    float e = hash1(n+157.0);
+	float f = hash1(n+158.0);
+    float g = hash1(n+474.0);
+    float h = hash1(n+475.0);
+
+    float k0 =   a;
+    float k1 =   b - a;
+    float k2 =   c - a;
+    float k3 =   e - a;
+    float k4 =   a - b - c + d;
+    float k5 =   a - c - e + g;
+    float k6 =   a - b - e + f;
+    float k7 = - a + b + c - d + e - f - g + h;
+
+    return -1.0+2.0*(k0 + k1*u.x + k2*u.y + k3*u.z + k4*u.x*u.y + k5*u.y*u.z + k6*u.z*u.x + k7*u.x*u.y*u.z);
+}
+
+float3 noised(in float2 x) {
+    float2 p = floor(x);
+    float2 w = frac(x);
+    
+    float2 u = w*w*w*(w*(w*6.0-15.0)+10.0);
+    float2 du = 30.0*w*w*(w*(w-2.0)+1.0);
+    
+    float a = hash1(p+float2(0,0));
+    float b = hash1(p+float2(1,0));
+    float c = hash1(p+float2(0,1));
+    float d = hash1(p+float2(1,1));
+
+    float k0 = a;
+    float k1 = b - a;
+    float k2 = c - a;
+    float k4 = a - b - c + d;
+
+    return float3( -1.0+2.0*(k0 + k1*u.x + k2*u.y + k4*u.x*u.y), 
+                        2.0* du * float2( k1 + k4*u.y,
+                                          k2 + k4*u.x ) );
+}
+
+float noise(in float2 x) {
+    float2 p = floor(x);
+    float2 w = frac(x);
+    float2 u = w*w*w*(w*(w*6.0-15.0)+10.0);
+    
+#if 0
+    p *= 0.3183099;
+    float kx0 = 50.0*frac( p.x );
+    float kx1 = 50.0*frac( p.x+0.3183099 );
+    float ky0 = 50.0*frac( p.y );
+    float ky1 = 50.0*frac( p.y+0.3183099 );
+
+    float a = frac( kx0*ky0*(kx0+ky0) );
+    float b = frac( kx1*ky0*(kx1+ky0) );
+    float c = frac( kx0*ky1*(kx0+ky1) );
+    float d = frac( kx1*ky1*(kx1+ky1) );
+#else
+    float a = hash1(p+float2(0,0));
+    float b = hash1(p+float2(1,0));
+    float c = hash1(p+float2(0,1));
+    float d = hash1(p+float2(1,1));
+#endif
+    
+    return -1.0+2.0*( a + (b-a)*u.x + (c-a)*u.y + (a - b - c + d)*u.x*u.y );
+}
+
+//==========================================================================================
+// fbm constructions
+//==========================================================================================
+
+const float3x3 m3  = float3x3( 0.00,  0.80,  0.60,
+                              -0.80,  0.36, -0.48,
+                              -0.60, -0.48,  0.64 );
+const float3x3 m3i = float3x3( 0.00, -0.80, -0.60,
+                               0.80,  0.36, -0.48,
+                               0.60, -0.48,  0.64 );
+const float2x2 m2 = float2x2(  0.80,  0.60,
+                              -0.60,  0.80 );
+const float2x2 m2i = float2x2( 0.80, -0.60,
+                               0.60,  0.80 );
+
+//------------------------------------------------------------------------------------------
+
+float fbm_4(in float3 x) {
+    float f = 2.0;
+    float s = 0.5;
+    float a = 0.0;
+    float b = 0.5;
+	[loop]
+    for(int i=0; i<4; i++) {
+        float n = noise(x);
+        a += b*n;
+        b *= s;
+        x = f*mul(m3, x);
+    }
+	return a;
+}
+
+float4 fbmd_8(in float3 x) {
+    float f = 1.92;
+    float s = 0.5;
+    float a = 0.0;
+    float b = 0.5;
+    float3   d = float3(0.0,0.0,0.0);
+    float3x3 m = float3x3(1.0,0.0,0.0,
+                          0.0,1.0,0.0,
+                          0.0,0.0,1.0);
+	[loop]
+    for(int i=0; i<7; i++) {
+        float4 n = noised(x);
+        a += b*n.x;           // accumulate values		
+        d += b*mul(m, n.yzw); // accumulate derivatives
+        b *= s;
+        x = f*mul(m3, x);
+        m = f*mul(m3i, m);
+    }
+	return float4(a, d);
+}
+
+float fbm_9(in float2 x) {
+    float f = 1.9;
+    float s = 0.55;
+    float a = 0.0;
+    float b = 0.5;
+	[loop]
+    for(int i=0; i<9; i++) {
+        float n = noise(x);
+        a += b*n;
+        b *= s;
+        x = f*mul(m2, x);
+    }
+	return a;
+}
+
+float3 fbmd_9(in float2 x) {
+    float f = 1.9;
+    float s = 0.55;
+    float a = 0.0;
+    float b = 0.5;
+    float2   d = float2(0.0,0.0);
+    float2x2 m = float2x2(1.0,0.0,0.0,1.0);
+	[loop]
+    for(int i=0; i<9; i++) {
+        float3 n = noised(x);
+        a += b*n.x;          // accumulate values		
+        d += b*mul(m, n.yz); // accumulate derivatives
+        b *= s;
+        x = f*mul(m2, x);
+        m = f*mul(m2i, m);
+    }
+	return float3(a, d);
+}
+
+float fbm_4(in float2 x) {
+    float f = 1.9;
+    float s = 0.55;
+    float a = 0.0;
+    float b = 0.5;
+	[loop]
+    for(int i=0; i<3; i++) {
+        float n = noise(x);
+        a += b*n;
+        b *= s;
+        x = f*mul(m2, x);
+    }
+	return a;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
+float3 mCloudPosition : CONTROLOBJECT<string name = "cloud_controller.pmx"; string item = "Position";>;
+float3 mCloudRadius   : CONTROLOBJECT<string name = "cloud_controller.pmx"; string item = "Radius";>;
+float mCloudCutoffP  : CONTROLOBJECT<string name = "cloud_controller.pmx"; string item = "Cutoff+";>;
+float mCloudCutoffM  : CONTROLOBJECT<string name = "cloud_controller.pmx"; string item = "Cutoff-";>;
+float mCloudDensityP : CONTROLOBJECT<string name = "cloud_controller.pmx"; string item = "Density+";>;
+float mCloudDensityM : CONTROLOBJECT<string name = "cloud_controller.pmx"; string item = "Density-";>;
+float mCloudBrightnessP : CONTROLOBJECT<string name = "cloud_controller.pmx"; string item = "Brightness+";>;
+float mCloudBrightnessM : CONTROLOBJECT<string name = "cloud_controller.pmx"; string item = "Brightness-";>;
+
+static float mCloudCutoff  = lerp(lerp(0.1, 1.0, mCloudCutoffP), 0.0, mCloudCutoffM);
+static float mCloudDensity = lerp(lerp(0.2, 1.0, mCloudDensityP), 0.0, mCloudDensityM);
+static float mCloudBrightness = lerp(lerp(0.4, 2.0, mCloudBrightnessP), 0.0, mCloudBrightnessM);
+
+// 二次方程式 ax^2 + bx + c = 0 の解を求める
+inline float2 SolveQuadraticEquation(float a, float b, float c, out float disc) {
+	disc = b*b - 4*a*c;
+	float sd = sqrt(disc);
+	return float2((-b-sd)/(2*a), (-b+sd)/(2*a));
+}
+
+// 二次方程式 ax^2 + 2bx + c = 0 の解を求める。一次の係数が 2b であることに注意。
+inline float2 SolveQuadraticEquation2B(float a, float b, float c, out float disc) {
+	disc = b*b - a*c;
+	float sd = sqrt(disc);
+	return float2((-b-sd)/a, (-b+sd)/a);
+}
+
+// レイと原点を中心とする球の交点を求める
+float3 RaySphereIntersection(float3 rayPos, float3 rayDir, float sphereRadius, out bool hit) {
+	float disc;
+	float2 s = SolveQuadraticEquation2B(
+		dot(rayDir, rayDir),
+		dot(rayPos, rayDir),
+		dot(rayPos, rayPos) - sphereRadius*sphereRadius,
+		disc
+	);
+	if (disc < 0) {
+		hit = false;
+		return float3(0, 0, 0);
+	}
+
+	float t;
+	if (s.x >= 0) {
+		t = s.x;
+	} else if (s.y >= 0) {
+		t = s.y;
+	} else {
+		hit = false;
+		return float3(0, 0, 0);
+	}
+
+	hit = true;
+	return float3(rayPos + t*rayDir);
+}
+
+float3 RayEllipsoidIntersection(float3 rayPos, float3 rayDir, float3 radius, out bool hit) {
+	float disc;
+	float3 r0 = rayPos / radius;
+	float3 rd = rayDir / radius;
+	float2 s = SolveQuadraticEquation2B(
+		dot(rd, rd), dot(r0, rd), dot(r0, r0) - 1.0, disc);
+	if (disc < 0) {
+		hit = false;
+		return float3(0, 0, 0);
+	}
+
+	float t;
+	if (s.x >= 0) {
+		t = s.x;
+	} else if (s.y >= 0) {
+		t = s.y;
+	} else {
+		hit = false;
+		return float3(0, 0, 0);
+	}
+
+	hit = true;
+	return float3(rayPos + t*rayDir);
+}
+
+float3 RaySphereIntersection(float3 rayPos, float3 rayDir, float3 sphereRadius, out bool hit) {
+	rayPos /= sphereRadius;
+	rayDir = rayDir / sphereRadius;
+	float3 p = RaySphereIntersection(rayPos, rayDir, 1.0, hit);
+	return p / sphereRadius;
+}
+
+// レイと平面と交点を求める
+float3 RayPlaneIntersection(float3 rayPos, float3 rayDir, float3 planePoint, float3 planeNormal) {
+	float denom = dot(rayDir, planeNormal);
+	float t = dot(planePoint - rayPos, planeNormal) / denom;
+	return rayPos + t*rayDir;
+}
+
+/*
+float3 RayPlaneIntersection(float3 rayPos, float3 rayDir, float3 planePoint, float3 planeNormal, out bool hit) {
+	float denom = dot(rayDir, planeNormal);
+	if (abs(denom) < EPSILON) {
+		hit = false;
+		return float3(0, 0, 0);
+	}
+	float t = dot(planePoint - rayPos, planeNormal) / denom;
+	if (t < 0) {
+		hit = false;
+		return float3(0, 0, 0);
+	}
+	hit = true;
+	return rayPos + t*rayDir;
+}
+*/
+
+float Ellipsoid(float3 p, float3 radius) {
+	return dot(p / radius, p / radius) - 1.0;
+}
+
+float IK_SphereFunction(float3 p, float r) {
+	return length(p) - r;
+}
+
+float3 IK_Normal(float3 p, float r) {
+	float eps = 0.0001;
+
+	float d0 = IK_SphereFunction(p, r);
+	float dx = IK_SphereFunction(p + float3(-eps, 0, 0), r);
+	float dy = IK_SphereFunction(p + float3(0, -eps, 0), r);
+	float dz = IK_SphereFunction(p + float3(0, 0, -eps), r);
+
+	return normalize(float3(d0 - dx, d0 - dy, d0 - dz));
+}
+
+float OpticalDepthAt(float3 p, float interval) {
+	// ノイズを生成
+	float3 hashP = 5 * p / min(mCloudRadius.x, min(mCloudRadius.y, mCloudRadius.z));
+	float r = max(fbm_4(hashP) - mCloudCutoff, 0.0);
+
+	// 中心なら0、外周部なら1
+	float u = saturate(Ellipsoid(p, mCloudRadius) + 1.0);
+
+	// ガウス分布っぽい濃度分布にする
+	float baseDensity = max(mCloudDensity * exp(-7*u*u) - 0.01, 0.0);
+
+	return r * baseDensity * interval;
+}
+
+float4 Iori_PostEffectExampleVS(
+	in float4 Position : POSITION,
+	in float4 Texcoord : TEXCOORD,
+	out float4 oTexcoord0 : TEXCOORD0) : POSITION
+{
+	oTexcoord0 = Texcoord;
+	oTexcoord0.xy += ViewportOffset;
+	oTexcoord0.zw = oTexcoord0.xy * ViewportSize;
+	return Position;
+}
+
+float LinearDepth(float3 p, float3 cameraPos, float3 cameraDir) {
+	return dot(p - cameraPos, cameraDir);
+}
+
+float4 CastRay(
+	float3 rayPos,
+	float3 rayDir,
+	float3 cameraDir,
+	float  maxDepth,
+	out float3 surfacePos
+) {
+	bool willHit;
+	surfacePos = RayEllipsoidIntersection(rayPos, rayDir, mCloudRadius, willHit);
+	if (!willHit)  {
+		return float4(-1, -1, -1, -1);
+	}
+
+	static const int N_LAYERS = 64;
+	static const int N_LIGHT_SAMPLES = 2;
+
+	// 楕円上の点の中で最も深度が浅い点を求める
+	float3 frontDir = normalize(-cameraDir * mCloudRadius * mCloudRadius);
+	float3 frontPoint = mCloudRadius * frontDir;
+
+	float width = length(frontPoint) * 2;
+	float layerInterval = width / (N_LAYERS - 1);
+
+	float opticalDepth = 0;
+	float scatteredLight = 0;
+	int nActiveLayers = 0;
+
+	[fastopt]
+	for (int i = 0; i < N_LAYERS; i++) {
+		// レイがi番目のレイヤーとぶつかる点を求める
+		float3 layerPoint = frontPoint + (i * layerInterval) * cameraDir;
+		float3 ithPoint = RayPlaneIntersection(rayPos, rayDir, layerPoint, cameraDir);
+
+		float depth = LinearDepth(ithPoint, rayPos, cameraDir);
+
+		// 球の内側であれば光学的深さを加算する
+		if (depth <= maxDepth /*&& Ellipsoid(ithPoint, mCloudRadius) < EPSILON*/) {
+			opticalDepth += OpticalDepthAt(ithPoint, layerInterval);
+
+			// In-Scattering を計算する
+			//float3 exitPoint = RayEllipsoidIntersection(ithPoint, -SunDirection, mCloudRadius, willHit);
+			//float3 exitDist = distance(ithPoint, exitPoint);
+			float3 lightSampleInterval = dot(mCloudRadius, float3(1, 1, 1)) * 0.1 / (N_LIGHT_SAMPLES + 1);
+			float lightDirOpticalDepth = 0;
+			for (int j = 0; j < N_LIGHT_SAMPLES; j++) {
+				float3 samplePoint = ithPoint + (j + 1) * lightSampleInterval * -SunDirection;
+				if (Ellipsoid(samplePoint, mCloudRadius) < EPSILON) {
+					lightDirOpticalDepth += OpticalDepthAt(samplePoint, lightSampleInterval);
+				}
+			}
+			// ithPoint に入射する光の量が exp(-lightDirOpticalDepth) で、
+			// ithPoint から cameraPos まで届く光がその exp(-opticalDepth) 倍になる
+			scatteredLight += exp(-lightDirOpticalDepth-opticalDepth);
+
+			nActiveLayers++;
+		}
+	}
+	scatteredLight /= nActiveLayers;
+
+	return float4(SunColor * mCloudBrightness * scatteredLight, 1.0 - exp(-opticalDepth));
+}
+
+float4 Iori_PostEffectExamplePS(
+	in float4 coord : TEXCOORD0,
+	uniform sampler source) : COLOR
+{
+	float4 MRT0 = tex2Dlod(Gbuffer5Map, float4(coord.xy, 0, 0));
+	float4 MRT1 = tex2Dlod(Gbuffer6Map, float4(coord.xy, 0, 0));
+	float4 MRT2 = tex2Dlod(Gbuffer7Map, float4(coord.xy, 0, 0));
+	float4 MRT3 = tex2Dlod(Gbuffer8Map, float4(coord.xy, 0, 0));
+
+	MaterialParam material;
+	DecodeGbuffer(MRT0, MRT1, MRT2, MRT3, material);
+
+	float2 p = (coord.xy - 0.5) * 2.0;
+	float3 rayDir =
+		  matView._13_23_33 / matProject._33
+		+ matView._11_21_31 * p.x / matProject._11
+		- matView._12_22_32 * p.y / matProject._22;
+	rayDir = normalize(rayDir);
+	float3 rayPos = CameraPosition - mCloudPosition;
+
+	float3 cameraDir = normalize(matView._13_23_33 / matProject._33);
+
+	float sphereRadius = mCloudRadius.x;
+
+	float3 surfacePos;
+	float4 color = CastRay(rayPos, rayDir, cameraDir, material.linearDepth, surfacePos);
+
+	clip(color.a - EPSILON); // オブジェクトに衝突していない場合は描画しない
+
+	// 色を計算する
+	return float4(color.rgb * color.a, color.a);
+}
+
+/*
+// 1 output, 3 inputs
+float Hash13(float3 p) {
+	p = float3(
+		dot(p, float3(127.1,311.7, 74.7)),
+		dot(p, float3(269.5,183.3,246.1)),
+		dot(p, float3(113.5,271.9,124.6))
+	);
+	return frac(sin(p) * 43758.5453123);
+}
+
+float ValueNoise(float3 p) {
+	float3 i = floor(p);
+	float3 f = frac(p);
+
+	float v0 = Hash13(i + float3(0, 0, 0));
+	float v1 = Hash13(i + float3(1, 0, 0));
+	float v2 = Hash13(i + float3(0, 1, 0));
+	float v3 = Hash13(i + float3(1, 1, 0));
+	float v4 = Hash13(i + float3(0, 0, 1));
+	float v5 = Hash13(i + float3(1, 0, 1));
+	float v6 = Hash13(i + float3(0, 1, 1));
+	float v7 = Hash13(i + float3(1, 1, 1));
+
+	float3 alpha = smoothstep(0.0, 1.0, f);
+
+	return lerp(
+		lerp(
+			lerp(v0, v1, alpha.x),
+			lerp(v2, v3, alpha.x),
+			alpha.y
+		),
+		lerp(
+			lerp(v4, v5, alpha.x),
+			lerp(v6, v7, alpha.x),
+			alpha.y
+		),
+		alpha.z
+	);
+}
+
+float FBM(float3 p) {
+	float v = 0.0;
+	v += 1.0 * ValueNoise(p / 1.0);
+	v += 2.0 * ValueNoise(p / 2.0);
+	v += 4.0 * ValueNoise(p / 4.0);
+	v += 8.0 * ValueNoise(p / 8.0);
+	return v / (1 + 2 + 4 + 8);
+}
+
+float4 Iori_SobelPS(
+	in float2 coord : TEXCOORD0,
+	in float3 viewdir : TEXCOORD1,
+	uniform sampler source) : COLOR
+{
+	float c;
+	float2 p;
+	float2 g = float2(0, 0);
+
+	#define CONVOLVE(offsetX, offsetY, coeffX, coeffY) \
+		p = coord + float2(offsetX, offsetY) * ViewportOffset2; \
+		c = tex2Dlod(source, float4(p, 0, 0)).rgb; \
+		g += length(c) * float2(coeffX, coeffY);
+
+	CONVOLVE(-1, -1,  1,  1)
+	CONVOLVE( 0, -1,  0,  2)
+	CONVOLVE( 1, -1, -1,  1)
+	CONVOLVE(-1,  0,  2,  0)
+	CONVOLVE( 0,  0,  0,  0)
+	CONVOLVE( 1,  0, -2,  0)
+	CONVOLVE(-1,  1,  1, -1)
+	CONVOLVE( 0,  1,  0, -2)
+	CONVOLVE( 1,  1, -1, -1)
+
+	#undef CONVOLVE
+
+	float3 color = length(g);
+	return float4(color, 1.0);
+}
+*/
