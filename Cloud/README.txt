@@ -18,6 +18,7 @@ VolumeticCloud.pmx をロードしてください。
 
 * Size  
   雲のサイズを大きくしたり小さくしたりします。
+  サイズを大きくするとパターンが相対的に小さくなってしまうので PatternScale も増やして調整してください。
 
 * PatternScale  
   雲のパターン(濃淡)のスケールを変更します。
@@ -32,6 +33,7 @@ VolumeticCloud.pmx をロードしてください。
 * Brightness  
   雲の明るさを調整します。
   より正確に言うとガンマ補正をかけます。
+  色が薄いな～と思うときは Brightness を上げてください。
 
 * H  
   雲の色相を変更します。
@@ -47,8 +49,12 @@ VolumeticCloud.pmx をロードしてください。
 軽量版
 -----
 
-VolumeticCloud の動作が重たい場合は軽量版を使ってください。
+VolumeticCloud の動作が重たい人のために軽量版を用意しています。
+作業中は軽量版を使っておいて録画するときは通常版を使うといった使い分けができます。
+
 軽量版を使うには、VolumeticCloud.pmx をロードした後に以下の手順を行ってください。
 
 1. エフェクト割当を開く
 2. CloudMap の VolumeticCloud.pmx をダブルクリックして "volumetic_cloud_low_quality.fx" を選択する
+
+軽量版から通常版に戻したいときは 2 番の手順のところで "volumetic_cloud.fx" を選択してください。
