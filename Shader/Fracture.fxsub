@@ -8,6 +8,11 @@
 //   1: 秒
 #define FRACTURE_DEFAULT_TIME_UNIT 1
 
+// Fractureの衝撃速度に掛ける値
+// 本家の挙動に合わせるために 2 にしています。
+// rev.5 以前の動きを再現したい場合は 1 にしてください。
+#define FRACTURE_DEFAULT_SPREAD_FACTOR 2
+
 //-----------------------------------------------------------------------------
 
 float Fracture_Time : TIME <bool SyncInEditMode=true;>;
@@ -27,6 +32,7 @@ float3 Fracture_BreakStartFrame: CONTROLOBJECT < string name = "(self)"; string 
 //float3 Fracture_FadeSpanFrame  : CONTROLOBJECT < string name = "(self)"; string item = "ﾌｪｰﾄﾞ期間F"; >;
 
 float3 Fracture_TimeUnitPerFrame : CONTROLOBJECT < string name = "FractureController.pmx"; string item = "TimeUnitPerFrame"; >;
+float3 Fracture_SpreadFactor     : CONTROLOBJECT < string name = "FractureController.pmx"; string item = "SpreadFactor"; >;
 
 // Rodriguesの回転公式
 float3 Fracture_Rotate3D(float3 r, float3 n, float theta) {
@@ -52,8 +58,11 @@ static const float FRACTURE_ROTATE_SPEED_RND = 0.3;
 #else
     #error "Undefined value of FRACTURE_TIME_UNIT"
 #endif
+
 static float Fracture_TimeCoeff = Fracture_TimeUnitPerFrame.x < 0.01
     ? FRACTURE_DEFAULT_TIME_UNIT_PER_FRAME : Fracture_TimeUnitPerFrame.x;
+static float Fracture_SpreadCoeff = Fracture_SpreadFactor.x < 0.01
+    ? FRACTURE_DEFAULT_SPREAD_FACTOR : Fracture_SpreadFactor.x;
 
 float4 Fracture_TranslatePosition(float4 iPosition, float4 iGravityCenter, inout float3 ioNormal) {
     if (iGravityCenter.w <= 0.0) {
@@ -80,7 +89,7 @@ float4 Fracture_TranslatePosition(float4 iPosition, float4 iGravityCenter, inout
     float elapsedFrame = max(0.0, currentFrame - breakStartFrame);
 
     float3 gravityVector = Fracture_GravityVector / (Fracture_TimeCoeff * Fracture_TimeCoeff);
-    float3 oGravityCenter = gravityCenter + elapsedFrame * velocity
+    float3 oGravityCenter = gravityCenter + elapsedFrame * velocity * Fracture_SpreadCoeff
         + 0.5 * elapsedFrame * elapsedFrame * gravityVector;
 
     float baseRotateSpeed = Fracture_RotateSpeed.x / Fracture_TimeCoeff;
