@@ -6,7 +6,7 @@
 // FractureController が存在する場合、この値は無視され、FractureControllerの設定が使われます。
 //   0: フレーム
 //   1: 秒
-#define FRACTURE_DEFAULT_TIME_UNIT 0
+#define FRACTURE_DEFAULT_TIME_UNIT 1
 
 //-----------------------------------------------------------------------------
 
