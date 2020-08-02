@@ -39,6 +39,9 @@ void DepthObjectVS(
 	Position = ScalePosition(Position);
 #endif
 // }}}
+
+	Position = mul(Position, matWorld);
+
 	oTexcoord = Texcoord;
 	oPosition = mul(Position, matViewProject);
 }
