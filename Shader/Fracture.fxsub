@@ -1,4 +1,14 @@
 // 分解エフェクト
+
+// Fractureのパラメータの時間の単位
+// 崩壊速度、衝撃速度、回転速度、重力ベクトルの解釈が変わります。
+// 崩壊開始Fの解釈はこの値に関わらず常にフレームです。
+//   0: フレーム
+//   1: 秒
+#define FRACTURE_TIME_UNIT 0
+
+//-----------------------------------------------------------------------------
+
 float Fracture_Time : TIME <bool SyncInEditMode=true;>;
 
 float4x4 Fracture_OriginMatrix : CONTROLOBJECT < string name = "(self)"; string item = "モデル親"; >;
@@ -28,9 +38,17 @@ float3 Fracture_Hash33(float3 p) {
    return frac((p3.xxy + p3.yzz) * p3.zyx); 
 }
 
-static float FRACTURE_IMPACT_DIR_RND = 0.5;
-static float FRACTURE_IMPACT_SPEED_RND = 0.3;
-static float FRACTURE_ROTATE_SPEED_RND = 0.3;
+static const float FRACTURE_IMPACT_DIR_RND = 0.5;
+static const float FRACTURE_IMPACT_SPEED_RND = 0.3;
+static const float FRACTURE_ROTATE_SPEED_RND = 0.3;
+
+#if FRACTURE_TIME_UNIT == 0
+    static const float FRACTURE_TIME_UNIT_PER_FRAME = 1;
+#elif FRACTURE_TIME_UNIT == 1
+    static const float FRACTURE_TIME_UNIT_PER_FRAME = 30;
+#else
+    #error "Undefined value of FRACTURE_TIME_UNIT"
+#endif
 
 float4 Fracture_TranslatePosition(float4 iPosition, float4 iGravityCenter, inout float3 ioNormal) {
     if (iGravityCenter.w <= 0.0) {
@@ -46,18 +64,22 @@ float4 Fracture_TranslatePosition(float4 iPosition, float4 iGravityCenter, inout
     float3 normal = mul(float4(ioNormal, 0.0), Fracture_OriginMatrix).xyz;
     float3 gravityCenter = mul(float4(iGravityCenter.xyz, 1.0), Fracture_OriginMatrix).xyz;
     float3 breakCenter = Fracture_BreakCenter;
-    float breakStartFrame = distance(gravityCenter, breakCenter) / Fracture_BreakSpeed + Fracture_BreakStartFrame;
+    float breakSpeed = Fracture_BreakSpeed.x / FRACTURE_TIME_UNIT_PER_FRAME;
+    float breakStartFrame = distance(gravityCenter, breakCenter) / breakSpeed + Fracture_BreakStartFrame.x;
     float3 direction = normalize(gravityCenter - breakCenter);
     direction = normalize(direction + (random2 - 0.5) * 2.0 * FRACTURE_IMPACT_DIR_RND);
-    float3 velocity = Fracture_ImpactSpeed.x * direction;
+    float impactSpeed = Fracture_ImpactSpeed.x / FRACTURE_TIME_UNIT_PER_FRAME;
+    float3 velocity = impactSpeed * direction;
     velocity *= 1.0 + (random1.x - 0.5) * 2.0 * FRACTURE_IMPACT_SPEED_RND;
     float currentFrame = Fracture_Time * 30.0;
     float elapsedFrame = max(0.0, currentFrame - breakStartFrame);
 
+    float3 gravityVector = Fracture_GravityVector / (FRACTURE_TIME_UNIT_PER_FRAME * FRACTURE_TIME_UNIT_PER_FRAME);
     float3 oGravityCenter = gravityCenter + elapsedFrame * velocity
-        + 0.5 * elapsedFrame * elapsedFrame * Fracture_GravityVector;
+        + 0.5 * elapsedFrame * elapsedFrame * gravityVector;
 
-    float rotateSpeed = Fracture_RotateSpeed * (1.0 + (random1.z - 0.5) * 2.0 * FRACTURE_ROTATE_SPEED_RND);
+    float baseRotateSpeed = Fracture_RotateSpeed.x / FRACTURE_TIME_UNIT_PER_FRAME;
+    float rotateSpeed = baseRotateSpeed * (1.0 + (random1.z - 0.5) * 2.0 * FRACTURE_ROTATE_SPEED_RND);
     float rotateAngle = radians(Fracture_RotateInitial + elapsedFrame * rotateSpeed) * (elapsedFrame > 0.0);
     float3 offset = Fracture_Rotate3D(position - gravityCenter, random3 - 0.5, rotateAngle);
     float3 rotatedNormal = Fracture_Rotate3D(normal, random3 - 0.5, rotateAngle);
