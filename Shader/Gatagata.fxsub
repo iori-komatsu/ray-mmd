@@ -1,0 +1,173 @@
+float3 mPerturbWidth      : CONTROLOBJECT<string name = "GatagataController.pmx"; string item = "PerturbWidth";>;
+float mPerturbPeriodP     : CONTROLOBJECT<string name = "GatagataController.pmx"; string item = "PerturbPeriod+";>;
+float mPerturbPeriodM     : CONTROLOBJECT<string name = "GatagataController.pmx"; string item = "PerturbPeriod-";>;
+float mDistortionPeriodP  : CONTROLOBJECT<string name = "GatagataController.pmx"; string item = "DistortionPeriod+";>;
+float mDistortionPeriodM  : CONTROLOBJECT<string name = "GatagataController.pmx"; string item = "DistortionPeriod-";>;
+float mYCompressionP      : CONTROLOBJECT<string name = "GatagataController.pmx"; string item = "YCompression+";>;
+float mYCompressionM      : CONTROLOBJECT<string name = "GatagataController.pmx"; string item = "YCompression-";>;
+float mYVarianceP         : CONTROLOBJECT<string name = "GatagataController.pmx"; string item = "YVariance+";>;
+float mYVarianceM         : CONTROLOBJECT<string name = "GatagataController.pmx"; string item = "YVariance-";>;
+float mDistortionAngleP   : CONTROLOBJECT<string name = "GatagataController.pmx"; string item = "DistortionAngle+";>;
+float mDistortionAngleM   : CONTROLOBJECT<string name = "GatagataController.pmx"; string item = "DistortionAngle-";>;
+float mAmbientLightP      : CONTROLOBJECT<string name = "GatagataController.pmx"; string item = "AmbientLight+";>;
+float mAmbientLightM      : CONTROLOBJECT<string name = "GatagataController.pmx"; string item = "AmbientLight-";>;
+
+static const float PerturbMaxWidth = mPerturbWidth.x;
+static const float PerturbFrequency = 1.0 / lerp(lerp(0.1, 30, mPerturbPeriodP), 0.001, mPerturbPeriodM);
+static const float YScalingMin = 1.0 - lerp(lerp(0.25, 0.995, mYCompressionP), 0.0, mYCompressionM);
+static const float YScalingMax = lerp(YScalingMin, 1.0, lerp(lerp(0.5, 1.0, mYVarianceP), 0.0, mYVarianceM));
+static const float NormalDistortionFrequency = 1.0 / lerp(lerp(10, 100, mDistortionPeriodP), 0.5, mDistortionPeriodM);
+static const float NormalDistortionMaxAngle = lerp(lerp(0.3, 1.0, mDistortionAngleP), 0.0, mDistortionAngleM);
+static const float AmbientCoeff = lerp(lerp(0.2, 1.0, mAmbientLightP), 0.0, mAmbientLightM);
+
+float  hash(float  v) { return frac(sin(v * 78.233) * 43758.5453123); }
+float2 hash(float2 v) { return frac(sin(v * 78.233) * 43758.5453123); }
+float3 hash(float3 v) { return frac(sin(v * 78.233) * 43758.5453123); }
+float4 hash(float4 v) { return frac(sin(v * 78.233) * 43758.5453123); }
+
+float hash12(float2 v)
+{
+	float2 e;
+	v = frexp(v, e);
+	v += e * (1.0 / 129.0);
+	return hash(hash(v.x) + v.y);
+}
+
+float hash13(float3 v)
+{
+	float3 e;
+	v = frexp(v, e);
+	v += e * (1.0 / 129.0);
+	return hash(hash(hash(v.x) + v.y) + v.z);
+}
+
+float3 hash33(float3 v)
+{
+	float3 e;
+	v = frexp(v, e);
+	v += e * (1.0 / 129.0);
+	return hash(hash(hash(v.x + float3(0, 4.31265, 9.38974)) + v.y) + v.z);
+}
+
+float ValueNoise12(float2 src)
+{
+	float2 i = floor(src);
+	float2 f = frac(src);
+
+	float v1 = hash12(i + float2(0.0, 0.0));
+	float v2 = hash12(i + float2(1.0, 0.0));
+	float v3 = hash12(i + float2(0.0, 1.0));
+	float v4 = hash12(i + float2(1.0, 1.0));
+
+	float2 a = f * f * f * (10.0 + f * (-15.0 + f * 6.0));
+
+	return 2.0 * lerp(
+		lerp(v1, v2, a.x),
+		lerp(v3, v4, a.x),
+		a.y
+	) - 1.0;
+}
+
+float ValueNoise13(float3 src)
+{
+	float3 i = floor(src);
+	float3 f = frac(src);
+
+	float v1 = hash13(i + float3(0.0, 0.0, 0.0));
+	float v2 = hash13(i + float3(1.0, 0.0, 0.0));
+	float v3 = hash13(i + float3(0.0, 1.0, 0.0));
+	float v4 = hash13(i + float3(1.0, 1.0, 0.0));
+	float v5 = hash13(i + float3(0.0, 0.0, 1.0));
+	float v6 = hash13(i + float3(1.0, 0.0, 1.0));
+	float v7 = hash13(i + float3(0.0, 1.0, 1.0));
+	float v8 = hash13(i + float3(1.0, 1.0, 1.0));
+
+	float3 a = f * f * f * (10.0 + f * (-15.0 + f * 6.0));
+
+	return 2.0 * lerp(
+		lerp(lerp(v1, v2, a.x), lerp(v3, v4, a.x), a.y),
+		lerp(lerp(v5, v6, a.x), lerp(v7, v8, a.x), a.y),
+		a.z
+	) - 1.0;
+}
+
+float3 ValueNoise33(float3 src) {
+	float3 i = floor(src);
+	float3 f = frac(src);
+
+	float3 v1 = hash33(i + float3(0.0, 0.0, 0.0));
+	float3 v2 = hash33(i + float3(1.0, 0.0, 0.0));
+	float3 v3 = hash33(i + float3(0.0, 1.0, 0.0));
+	float3 v4 = hash33(i + float3(1.0, 1.0, 0.0));
+	float3 v5 = hash33(i + float3(0.0, 0.0, 1.0));
+	float3 v6 = hash33(i + float3(1.0, 0.0, 1.0));
+	float3 v7 = hash33(i + float3(0.0, 1.0, 1.0));
+	float3 v8 = hash33(i + float3(1.0, 1.0, 1.0));
+
+	float3 a = f * f * f * (10.0 + f * (-15.0 + f * 6.0));
+
+	return 2.0 * lerp(
+		lerp(lerp(v1, v2, a.x), lerp(v3, v4, a.x), a.y),
+		lerp(lerp(v5, v6, a.x), lerp(v7, v8, a.x), a.y),
+		a.z
+	) - 1.0;
+}
+
+float FBM13(float3 src) {
+	const float3x3 M = 2.0 * float3x3(
+		 0.54030231,  0.45464871,  0.70807342,
+		-0.84147098,  0.29192658,  0.45464871,
+		 0.0       , -0.84147098,  0.54030231);
+	float ret = 0.0;
+	ret += 0.5000 * ValueNoise13(src); src = mul(M, src);
+	ret += 0.2500 * ValueNoise13(src); src = mul(M, src);
+	ret += 0.1250 * ValueNoise13(src); src = mul(M, src);
+	ret += 0.0625 * ValueNoise13(src); src = mul(M, src);
+	return ret * (1.0 / 0.9375);
+}
+
+float4 PerturbPosition(float4 pos) {
+	float3 noise1 = ValueNoise33(pos.xyz * PerturbFrequency);
+	float  noise2 = ValueNoise12(pos.xy  * PerturbFrequency);
+	pos.xyz += noise1 * PerturbMaxWidth;
+	pos.y = min(pos.y * lerp(YScalingMin, YScalingMax, noise2), pos.y);
+	return pos;
+}
+
+float3 TangentNormalToWorldNormal(float3 tangentNormal, float3 normal, float3 pos, float2 uv) {
+	float3 p1 = ddx(pos);
+	float3 p2 = ddy(pos);
+	float2 uv1 = ddx(uv);
+	float2 uv2 = ddy(uv);
+
+	// worldãÛä‘Ç…Ç®ÇØÇÈué≤Ç∆vé≤ÇÃï˚å¸ÇãÅÇﬂÇÈ
+	float3 u = normalize(uv2.y * p1 - uv1.y * p2);
+	float3 v = normalize(uv1.x * p2 - uv2.x * p1);
+
+	// uÇ∆vÇnormalÇñ@ê¸Ç∆Ç∑ÇÈïΩñ Ç…éÀâeÇµÇƒ tangent vector Ç∆ binormal vector ÇìæÇÈ
+	float3 tangent  = normalize(u - dot(u, normal) * normal);
+	float3 binormal = normalize(v - dot(v, normal) * normal);
+
+	return normalize(tangentNormal.x * tangent + tangentNormal.y * binormal + tangentNormal.z * normal);
+}
+
+float3 RandomUnitVector(float3 p) {
+	const float TAU = 6.283185;
+
+	float r1 = FBM13(p);
+	float r2 = FBM13(p + float3(42, 12, 91)) * TAU;
+	float theta = acos(1 - r1 * NormalDistortionMaxAngle);
+	float phi = r2;
+	return float3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
+}
+
+float3 DistortNormal(
+	float3 modelPos,
+	float3 worldPos,
+	float3 normal,
+	float2 tex
+) {
+	normal = normalize(normal);
+	float3 tangentNormal = RandomUnitVector(modelPos * NormalDistortionFrequency);
+	return TangentNormalToWorldNormal(tangentNormal, normal, worldPos, tex);
+}

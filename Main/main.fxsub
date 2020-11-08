@@ -2,11 +2,21 @@
 #include "../shader/math.fxsub"
 #include "../shader/common.fxsub"
 // {{{ scale.fx
+#ifdef SCALING_ENABLED
 #include "../shader/Scale.fxsub"
+#endif
 // }}
 // {{{ fracture.fx
+#ifdef FRACTURE_ENABLED
 #include "../shader/Fracture.fxsub"
+#endif
 // }}}
+// {{{ gatagata.fx
+#ifdef GATAGATA_ENABLED
+#include "../shader/gatagata.fxsub"
+#endif
+// }}}
+
 
 #define TEXTURE_FILTER LINEAR
 #define TEXTURE_MIP_FILTER LINEAR
@@ -434,6 +444,11 @@ void MainVS(
 // }}}
 	oTexcoord0 = Texcoord;
 	oTexcoord1 = Normal;
+// {{{ gatagata.fx
+#ifdef GATAGATA_ENABLED
+	Position = PerturbPosition(Position);
+#endif
+// }}}
 // {{{ scale.fx
 #ifdef SCALING_ENABLED
 	Position = ScalePosition(Position);

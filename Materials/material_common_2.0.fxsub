@@ -1476,6 +1476,11 @@ void MaterialVS(
 #if OCCLUSION_MAP_TYPE == 2 || OCCLUSION_MAP_TYPE == 3
 	oTexcoord2 = Texcoord2;
 #endif
+// {{{ gatagata.fx
+#ifdef GATAGATA_ENABLED
+	Position = PerturbPosition(Position);
+#endif
+// }}}
 // {{{ scale.fx
 #ifdef SCALING_ENABLED
     Position = ScalePosition(Position);

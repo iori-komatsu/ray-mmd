@@ -3,10 +3,19 @@
 #include "../shader/common.fxsub"
 #include "../shader/ShadowMapCascaded.fxsub"
 // {{{ scale.fx
+#ifdef SCALING_ENABLED
 #include "../shader/Scale.fxsub"
+#endif
 // }}}
 // {{{ fracture.fx
+#ifdef FRACTURE_ENABLED
 #include "../shader/Fracture.fxsub"
+#endif
+// }}}
+// {{{ gatagata.fx
+#ifdef GATAGATA_ENABLED
+#include "../shader/Gatagata.fxsub"
+#endif
 // }}}
 
 #if SUN_SHADOW_QUALITY == 1
@@ -55,6 +64,11 @@ void CascadeShadowMapVS(
 #ifdef FRACTURE_ENABLED
 	float3 notused;
 	Position = Fracture_TranslatePosition(Position, Texcoord2, /* inout */ notused);
+#endif
+// }}}
+// {{{ gatagata.fx
+#ifdef GATAGATA_ENABLED
+	Position = PerturbPosition(Position);
 #endif
 // }}}
 // {{{ scale.fx
