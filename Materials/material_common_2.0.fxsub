@@ -519,7 +519,7 @@ float3 ColorSynthesis(float3 diffuse, float3 m)
 	return diffuse * lerp(1.0, melanin, m);
 }
 
-#if NORMAL_MAP_FROM || NORMAL_SUB_MAP_FROM || GATAGATA_ENABLED
+#if NORMAL_MAP_FROM || NORMAL_SUB_MAP_FROM || GATAGATA_ENABLED || GATAGATA_EX_ENABLED
 float3 ComputeTangentBinormalNormal(float3 N, float3 P, float2 coord, float3 tangentNormal)
 {
 	float3 dp1 = ddx(P);
@@ -986,7 +986,7 @@ float3 GetNormal(float3 N, float3 P, float2 coord)
 #if NORMAL_MAP_UV_FLIP == 4
 	N.x *= -1;
 #endif
-#if NORMAL_MAP_FROM || NORMAL_SUB_MAP_FROM || GATAGATA_ENABLED
+#if NORMAL_MAP_FROM || NORMAL_SUB_MAP_FROM || GATAGATA_ENABLED || GATAGATA_EX_ENABLED
 	#if NORMAL_MAP_FROM && NORMAL_SUB_MAP_FROM && (NORMAL_MAP_TYPE == 4 || NORMAL_SUB_MAP_TYPE == 4)
 		#error "Unsupported option"
 	#endif
@@ -997,11 +997,13 @@ float3 GetNormal(float3 N, float3 P, float2 coord)
 
 	#if GATAGATA_ENABLED
 		float3 tangentNormal2 = GetDistortion(P);
+	#elif GATAGATA_EX_ENABLED
+		float3 tangentNormal2 = GetDistortion(P, mul(P, matWorld));
 	#elif NORMAL_SUB_MAP_FROM
 		float3 tangentNormal2 = GetSubNormal(N, P, coord);
 	#endif
 
-	#if NORMAL_MAP_FROM && (NORMAL_SUB_MAP_FROM || GATAGATA_ENABLED)
+	#if NORMAL_MAP_FROM && (NORMAL_SUB_MAP_FROM || GATAGATA_ENABLED || GATAGATA_EX_ENABLED)
 		float3 tangentNormal = RNMBlendUnpacked(tangentNormal1, tangentNormal2);
 	#elif NORMAL_MAP_FROM
 		float3 tangentNormal = tangentNormal1;
@@ -1481,6 +1483,11 @@ void MaterialVS(
 // {{{ gatagata.fx
 #ifdef GATAGATA_ENABLED
 	Position = PerturbPosition(Position);
+#endif
+// }}}
+// {{{ gatagata_ex.fx
+#ifdef GATAGATA_EX_ENABLED
+	Position = PerturbPosition(Position, mul(Position, matWorld));
 #endif
 // }}}
 // {{{ scale.fx

@@ -10,6 +10,11 @@
 #include "../../shader/Gatagata.fxsub"
 #endif
 // }}}
+// {{{ gatagata_ex.fx
+#ifdef GATAGATA_EX_ENABLED
+#include "../../shader/GatagataEx.fxsub"
+#endif
+// }}}
 
 #if SHADOW_QUALITY == 1
 #	define SHADOW_MAP_SIZE 1024
@@ -62,6 +67,11 @@ void CascadeShadowMapVS(
 // {{{ gatagata.fx
 #ifdef GATAGATA_ENABLED
 	Position = PerturbPosition(Position);
+#endif
+// }}}
+// {{{ gatagata_ex.fx
+#ifdef GATAGATA_EX_ENABLED
+	Position = PerturbPosition(Position, mul(Position, matWorld));
 #endif
 // }}}
 // {{{ scale.fx

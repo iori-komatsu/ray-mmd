@@ -13,7 +13,12 @@
 // }}}
 // {{{ gatagata.fx
 #ifdef GATAGATA_ENABLED
-#include "../shader/gatagata.fxsub"
+#include "../shader/Gatagata.fxsub"
+#endif
+// }}}
+// {{{ gatagata_ex.fx
+#ifdef GATAGATA_EX_ENABLED
+#include "../shader/GatagataEx.fxsub"
 #endif
 // }}}
 
@@ -447,6 +452,11 @@ void MainVS(
 // {{{ gatagata.fx
 #ifdef GATAGATA_ENABLED
 	Position = PerturbPosition(Position);
+#endif
+// }}}
+// {{{ gatagata_ex.fx
+#ifdef GATAGATA_EX_ENABLED
+	Position = PerturbPosition(Position, mul(Position, matWorld));
 #endif
 // }}}
 // {{{ scale.fx

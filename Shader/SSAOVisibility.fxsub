@@ -15,6 +15,11 @@
 #include "../shader/Gatagata.fxsub"
 #endif
 // }}}
+// {{{ gatagata_ex.fx
+#ifdef GATAGATA_EX_ENABLED
+#include "../shader/GatagataEx.fxsub"
+#endif
+// }}}
 
 #if SSAO_RECIEVER_ALPHA_MAP_ENABLE
 texture DiffuseMap: MATERIALTEXTURE;
@@ -46,6 +51,11 @@ void DepthObjectVS(
 // {{{ gatagata.fx
 #ifdef GATAGATA_ENABLED
 	Position = PerturbPosition(Position);
+#endif
+// }}}
+// {{{ gatagata_ex.fx
+#ifdef GATAGATA_EX_ENABLED
+	Position = PerturbPosition(Position, mul(Position, matWorld));
 #endif
 // }}}
 // {{{ scale.fx
